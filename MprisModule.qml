@@ -4,24 +4,34 @@ import Quickshell.Services.Mpris
 
 Item {
     id: root
-    implicitWidth: contentRow.implicitWidth + 4
+    implicitWidth: contentRow.implicitWidth + 8
     implicitHeight: 40
 
     property var player: null
     property string trackText: ""
     property string artistText: ""
+    property string albumText: ""
     property string albumArt: ""
-    property bool wasPlaying: false
-
-    // для прогресс-полосы внизу острова
     property real position: 0
     property real length: 0
-    property real progress: (length > 0 && position >= 0) ? Math.min(1, position / length) : 0
+    readonly property real progress: (length > 0 && position >= 0) ? Math.max(0, Math.min(1, position / length)) : 0
+    readonly property bool playing: player ? player.isPlaying : false
+    readonly property bool hasTrack: trackText !== "" || artistText !== ""
+
+    function formatTime(sec) {
+        if (sec === undefined || sec === null || isNaN(sec) || sec < 0) sec = 0
+        var total = Math.floor(sec)
+        var h = Math.floor(total / 3600)
+        var m = Math.floor((total % 3600) / 60)
+        var s = total % 60
+        if (h > 0) return h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s
+        return m + ":" + (s < 10 ? "0" : "") + s
+    }
 
     Component.onCompleted: updatePlayer()
 
     function updatePlayer() {
-        var players = Mpris.players.values
+        var players = Mpris.players ? Mpris.players.values : []
         var chosen = null
 
         if (players && players.length > 0) {
@@ -30,42 +40,40 @@ Item {
             }
             if (!chosen) {
                 for (var j = 0; j < players.length; j++) {
-                    if (players[j].trackTitle && players[j].trackTitle !== "") {
+                    if ((players[j].trackTitle && players[j].trackTitle !== "") || (players[j].trackArtist && players[j].trackArtist !== "")) {
                         chosen = players[j]; break
                     }
                 }
             }
+            if (!chosen) chosen = players[0]
         }
 
-        // ЗАЩИТА: если плеер пропал, но текст уже был — не сбрасываем сразу
         if (!chosen && root.trackText !== "") {
             retryTimer.restart()
             return
         }
 
         root.player = chosen
-
         if (!chosen) {
             root.trackText = ""
             root.artistText = ""
+            root.albumText = ""
             root.albumArt = ""
             root.position = 0
             root.length = 0
             return
         }
 
-        // ЗАЩИТА: если trackTitle пустой, но плеер есть — ждём
         var title = chosen.trackTitle || ""
         var artist = chosen.trackArtist || ""
-
         if (title === "" && artist === "") {
-            // Плеер есть, но метаданные ещё не пришли — не трогаем trackText
             retryTimer.restart()
             return
         }
 
         root.trackText = title
         root.artistText = artist
+        root.albumText = chosen.trackAlbum || ""
         root.albumArt = chosen.trackArtUrl || ""
         root.length = chosen.length || 0
         root.position = chosen.position || 0
@@ -79,21 +87,18 @@ Item {
     Connections {
         target: root.player
         ignoreUnknownSignals: true
-        function onPostTrackChanged() {
-            retryTimer.restart()
-        }
+        function onPostTrackChanged() { retryTimer.restart(); retryTimer2.restart() }
         function onIsPlayingChanged() { root.updatePlayer() }
         function onTrackArtUrlChanged() { root.updatePlayer() }
-        function onPositionChanged() {
-            if (root.player) root.position = root.player.position || 0
-        }
-        function onLengthChanged() { root.length = root.player ? root.player.length || 0 : 0 }
+        function onTrackTitleChanged() { root.updatePlayer() }
+        function onTrackArtistChanged() { root.updatePlayer() }
+        function onPositionChanged() { if (root.player) root.position = root.player.position || 0 }
+        function onLengthChanged() { root.length = root.player ? (root.player.length || 0) : 0 }
     }
 
-    // плавное обновление позиции, пока играет
     Timer {
         interval: 1000
-        running: root.player !== null && root.player.isPlaying
+        running: root.player !== null && root.playing
         repeat: true
         onTriggered: {
             if (root.player) {
@@ -103,35 +108,25 @@ Item {
         }
     }
 
-    Timer {
-        id: retryTimer
-        interval: 400
-        repeat: false
-        onTriggered: root.updatePlayer()
-    }
-
-    // Второй таймер на случай, если первый не догнал
-    Timer {
-        id: retryTimer2
-        interval: 900
-        repeat: false
-        onTriggered: root.updatePlayer()
-    }
+    Timer { id: retryTimer; interval: 350; repeat: false; onTriggered: root.updatePlayer() }
+    Timer { id: retryTimer2; interval: 900; repeat: false; onTriggered: root.updatePlayer() }
 
     Row {
         id: contentRow
         anchors.centerIn: parent
-        spacing: 9
+        spacing: 8
 
-        // миниатюра обложки
         Rectangle {
             id: coverThumb
             anchors.verticalCenter: parent.verticalCenter
             width: 28
             height: 28
-            radius: 7
+            radius: 8
             color: Theme.surface
             clip: true
+            border.color: (coverArea.containsMouse && root.player) ? Theme.accent : Theme.surface1
+            border.width: 1
+            Behavior on border.color { ColorAnimation { duration: 150 } }
 
             Image {
                 anchors.fill: parent
@@ -143,10 +138,10 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                text: root.player && root.player.isPlaying ? "󰎈" : "󰎆"
-                color: Theme.fgMuted
+                text: root.playing ? "󰎈" : "󰎆"
+                color: root.playing ? Theme.accent : Theme.fgMuted
                 font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 15
+                font.pixelSize: 14
                 visible: root.albumArt === ""
             }
 
@@ -160,36 +155,54 @@ Item {
             }
         }
 
-        // заголовок + исполнитель в две строки
-        Item {
-            id: textWrap
-            width: textCol.implicitWidth
-            height: textCol.implicitHeight
+        Column {
+            id: textCol
             anchors.verticalCenter: parent.verticalCenter
+            spacing: 1
+            width: Math.min(titleText.implicitWidth, 220)
 
-            Column {
-                id: textCol
-                anchors.centerIn: parent
-                spacing: 1
+            Text {
+                id: titleText
+                width: Math.min(implicitWidth, 220)
+                text: root.trackText !== "" ? root.trackText : (root.player ? (root.player.identity || "Медиа") : "Ничего не играет")
+                color: root.hasTrack ? (trackArea.containsMouse ? Theme.accent : Theme.fg) : Theme.fgMuted
+                font.family: "JetBrainsMono Nerd Font"
+                font.pixelSize: 13
+                font.bold: root.hasTrack
+                elide: Text.ElideRight
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
+
+            Row {
+                spacing: 5
+                visible: root.artistText !== "" || (root.length > 0 && root.hasTrack)
+                width: Math.min(implicitWidth, 220)
 
                 Text {
-                    text: root.trackText !== "" ? root.trackText : (root.player ? (root.player.identity || "") : "Ничего не играет")
-                    color: root.trackText !== "" ? (trackArea.containsMouse ? Theme.yellow : Theme.fg) : Theme.fgMuted
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 13
-                    font.bold: root.trackText !== ""
-                    elide: Text.ElideRight
-                    width: Math.min(implicitWidth, 220)
-                }
-
-                Text {
+                    id: artistText
+                    width: Math.min(implicitWidth, 150)
                     text: root.artistText
                     visible: root.artistText !== ""
                     color: Theme.fgMuted
                     font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 10
                     elide: Text.ElideRight
-                    width: Math.min(implicitWidth, 220)
+                }
+
+                Text {
+                    visible: root.artistText !== "" && root.length > 0
+                    text: "·"
+                    color: Theme.overlay
+                    font.family: "JetBrainsMono Nerd Font"
+                    font.pixelSize: 10
+                }
+
+                Text {
+                    visible: root.length > 0
+                    text: root.formatTime(root.position) + " / " + root.formatTime(root.length)
+                    color: Theme.fgMuted
+                    font.family: "JetBrainsMono Nerd Font"
+                    font.pixelSize: 10
                 }
             }
 
@@ -202,41 +215,47 @@ Item {
                 onClicked: playerPopup.visible = !playerPopup.visible
                 onWheel: (wheel) => {
                     if (!root.player) return
-                    if (wheel.angleDelta.y > 0) root.player.next()
-                    else root.player.previous()
+                    if (wheel.angleDelta.y > 0) { if (root.player.canGoNext !== false) root.player.next() }
+                    else { if (root.player.canGoPrevious !== false) root.player.previous() }
                 }
             }
         }
 
-        Text {
+        Rectangle {
             anchors.verticalCenter: parent.verticalCenter
-            text: root.player && root.player.isPlaying ? "󰏤" : "󰐊"
-            color: playArea.containsMouse ? Theme.accent : Theme.fg
-            font.family: "JetBrainsMono Nerd Font"
-            font.pixelSize: 15
-            Behavior on color { ColorAnimation { duration: 150 } }
-
+            width: 24; height: 24; radius: 12
+            color: playArea.containsMouse ? Theme.surface1 : "transparent"
+            opacity: root.player ? 1 : 0.35
+            Behavior on color { ColorAnimation { duration: 120 } }
+            Text {
+                anchors.centerIn: parent
+                anchors.horizontalCenterOffset: root.playing ? 0 : 1
+                text: root.playing ? "󰏤" : "󰐊"
+                color: playArea.containsMouse ? Theme.accent : Theme.fg
+                font.family: "JetBrainsMono Nerd Font"
+                font.pixelSize: 14
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
             MouseArea {
                 id: playArea
                 anchors.fill: parent
                 anchors.margins: -4
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (root.player) root.player.togglePlaying()
-                }
+                enabled: root.player !== null
+                onClicked: { if (root.player) root.player.togglePlaying() }
             }
         }
     }
 
-    // прогресс-полоса внизу острова
     Rectangle {
         id: barProgress
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        anchors.bottomMargin: 1
         height: 3
         radius: 1.5
         color: Theme.surface
@@ -248,14 +267,13 @@ Item {
             width: parent.width * root.progress
             height: parent.height
             radius: 1.5
-            color: Theme.accent
+            color: root.playing ? Theme.accent : Theme.overlay
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on color { ColorAnimation { duration: 200 } }
         }
     }
 
     onTrackTextChanged: {
-        if (trackText !== "") {
-            retryTimer2.restart()
-        }
+        if (trackText !== "") retryTimer2.restart()
     }
 }
