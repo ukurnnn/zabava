@@ -65,16 +65,16 @@ Item {
     property color sky:       color("sky")
 
     // Liquid glass tokens (derived from matugen palette)
-    readonly property color glassPanel: Qt.rgba(surface.r, surface.g, surface.b, 0.56)
-    readonly property color glassPanelStrong: Qt.rgba(surface.r, surface.g, surface.b, 0.72)
-    readonly property color glassCard: Qt.rgba(surface1.r, surface1.g, surface1.b, 0.34)
-    readonly property color glassCardHover: Qt.rgba(surface1.r, surface1.g, surface1.b, 0.48)
-    readonly property color glassIsland: Qt.rgba(bg.r, bg.g, bg.b, 0.50)
-    readonly property color glassBorder: Qt.rgba(fg.r, fg.g, fg.b, 0.14)
-    readonly property color glassBorderStrong: Qt.rgba(fg.r, fg.g, fg.b, 0.22)
-    readonly property color glassHighlight: Qt.rgba(1, 1, 1, 0.10)
-    readonly property color glassHighlightSoft: Qt.rgba(1, 1, 1, 0.05)
-    readonly property color glassShadow: Qt.rgba(0, 0, 0, 0.20)
+    property color glassPanel: Qt.rgba(surface.r, surface.g, surface.b, 0.56)
+    property color glassPanelStrong: Qt.rgba(surface.r, surface.g, surface.b, 0.72)
+    property color glassCard: Qt.rgba(surface1.r, surface1.g, surface1.b, 0.34)
+    property color glassCardHover: Qt.rgba(surface1.r, surface1.g, surface1.b, 0.48)
+    property color glassIsland: Qt.rgba(bg.r, bg.g, bg.b, 0.50)
+    property color glassBorder: Qt.rgba(fg.r, fg.g, fg.b, 0.14)
+    property color glassBorderStrong: Qt.rgba(fg.r, fg.g, fg.b, 0.22)
+    property color glassHighlight: Qt.rgba(1, 1, 1, 0.10)
+    property color glassHighlightSoft: Qt.rgba(1, 1, 1, 0.05)
+    property color glassShadow: Qt.rgba(0, 0, 0, 0.20)
 
     Behavior on bg       { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
     Behavior on surface  { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
