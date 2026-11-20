@@ -213,6 +213,7 @@ ShellRoot {
                     WeatherModule {
                         id: weatherModule
                         anchors.verticalCenter: parent.verticalCenter
+                        popup: weatherPopup
                     }
                 }
 
@@ -389,6 +390,11 @@ ShellRoot {
         id: calendarPopup
     }
 
+    WeatherPopup {
+        id: weatherPopup
+        weatherModule: weatherModule
+    }
+
     NotificationPopup {
         id: notificationPopup
     }
@@ -424,6 +430,7 @@ ShellRoot {
         appLauncher: appLauncher
         clipboardMenu: clipboardMenu
         calendarPopup: calendarPopup
+        weatherPopup: weatherPopup
         themeMenu: themeMenu
         powerMenu: powerMenu
         audioPopup: audioPopup

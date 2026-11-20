@@ -332,8 +332,15 @@ PanelWindow {
             anchors.fill: parent
             radius: 12
             color: Theme.bg
-            border.color: Theme.surface
+            border.color: Theme.surface1
             border.width: 1
+            opacity: launcher.visible ? 1 : 0
+            scale: launcher.visible ? 1 : 0.985
+            transformOrigin: Item.Bottom
+
+            Behavior on opacity { NumberAnimation { duration: 160 } }
+            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+            Behavior on border.color { ColorAnimation { duration: 180 } }
 
             MouseArea { anchors.fill: parent; onClicked: {} }
 

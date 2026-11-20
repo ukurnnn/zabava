@@ -136,9 +136,10 @@ PanelWindow {
 
         radius: 16
         color: Theme.bg
-        border.color: Theme.surface
+        border.color: Theme.surface1
         border.width: 1
         clip: true
+        opacity: root.visible ? 1 : 0
 
         Behavior on height {
             NumberAnimation {
@@ -153,6 +154,8 @@ PanelWindow {
                 easing.type: Easing.OutCubic
             }
         }
+        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Behavior on border.color { ColorAnimation { duration: 180 } }
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 

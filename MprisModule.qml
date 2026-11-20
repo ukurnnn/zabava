@@ -155,54 +155,64 @@ Item {
             }
         }
 
-        Column {
-            id: textCol
+        Item {
+            id: textWrap
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 1
-            width: Math.min(titleText.implicitWidth, 220)
+            implicitWidth: textCol.implicitWidth
+            implicitHeight: textCol.implicitHeight
+            width: implicitWidth
+            height: implicitHeight
+            clip: true
 
-            Text {
-                id: titleText
-                width: Math.min(implicitWidth, 220)
-                text: root.trackText !== "" ? root.trackText : (root.player ? (root.player.identity || "Медиа") : "Ничего не играет")
-                color: root.hasTrack ? (trackArea.containsMouse ? Theme.accent : Theme.fg) : Theme.fgMuted
-                font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 13
-                font.bold: root.hasTrack
-                elide: Text.ElideRight
-                Behavior on color { ColorAnimation { duration: 120 } }
-            }
-
-            Row {
-                spacing: 5
-                visible: root.artistText !== "" || (root.length > 0 && root.hasTrack)
-                width: Math.min(implicitWidth, 220)
+            Column {
+                id: textCol
+                spacing: 1
+                width: Math.max(titleText.implicitWidth, metaRow.visible ? metaRow.implicitWidth : 0, 1)
 
                 Text {
-                    id: artistText
-                    width: Math.min(implicitWidth, 150)
-                    text: root.artistText
-                    visible: root.artistText !== ""
-                    color: Theme.fgMuted
+                    id: titleText
+                    width: Math.min(implicitWidth, 220)
+                    text: root.trackText !== "" ? root.trackText : (root.player ? (root.player.identity || "Медиа") : "Ничего не играет")
+                    color: root.hasTrack ? (trackArea.containsMouse ? Theme.accent : Theme.fg) : Theme.fgMuted
                     font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 10
+                    font.pixelSize: 13
+                    font.bold: root.hasTrack
                     elide: Text.ElideRight
+                    maximumLineCount: 1
+                    Behavior on color { ColorAnimation { duration: 120 } }
                 }
 
-                Text {
-                    visible: root.artistText !== "" && root.length > 0
-                    text: "·"
-                    color: Theme.overlay
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 10
-                }
+                Row {
+                    id: metaRow
+                    spacing: 5
+                    visible: root.artistText !== "" || (root.length > 0 && root.hasTrack)
 
-                Text {
-                    visible: root.length > 0
-                    text: root.formatTime(root.position) + " / " + root.formatTime(root.length)
-                    color: Theme.fgMuted
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 10
+                    Text {
+                        width: visible ? Math.min(implicitWidth, 140) : 0
+                        text: root.artistText
+                        visible: root.artistText !== ""
+                        color: Theme.fgMuted
+                        font.family: "JetBrainsMono Nerd Font"
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                    }
+
+                    Text {
+                        visible: root.artistText !== "" && root.length > 0
+                        text: "·"
+                        color: Theme.overlay
+                        font.family: "JetBrainsMono Nerd Font"
+                        font.pixelSize: 10
+                    }
+
+                    Text {
+                        visible: root.length > 0
+                        text: root.formatTime(root.position) + " / " + root.formatTime(root.length)
+                        color: Theme.fgMuted
+                        font.family: "JetBrainsMono Nerd Font"
+                        font.pixelSize: 10
+                    }
                 }
             }
 

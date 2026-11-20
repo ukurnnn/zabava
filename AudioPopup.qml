@@ -232,12 +232,13 @@ PopupWindow {
         anchors.fill: parent
         radius: 20
         color: Theme.bg
-        border.color: Theme.surface
+        border.color: Theme.surface1
         border.width: 1
         opacity: root.visible ? 1 : 0
         scale: root.visible ? 1 : 0.96
-        Behavior on opacity { NumberAnimation { duration: 140 } }
-        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 150 } }
+        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+        Behavior on border.color { ColorAnimation { duration: 180 } }
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 

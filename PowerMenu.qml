@@ -50,8 +50,9 @@ PanelWindow {
         width: 380
         radius: 16
         color: Theme.bg
-        border.color: Theme.surface
+        border.color: Theme.surface1
         border.width: 1
+        opacity: root.visible ? 1 : 0
 
         Behavior on anchors.rightMargin {
             NumberAnimation {
@@ -59,6 +60,8 @@ PanelWindow {
                 easing.type: Easing.OutCubic
             }
         }
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+        Behavior on border.color { ColorAnimation { duration: 180 } }
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 

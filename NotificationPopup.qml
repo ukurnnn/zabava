@@ -45,14 +45,17 @@ PanelWindow {
                 height: contentLayout.implicitHeight + 24
                 radius: 12
                 color: Theme.bg
-                border.color: modelData.urgency === 2 ? Theme.red : Theme.surface
+                border.color: modelData.urgency === 2 ? Theme.red : Theme.surface1
                 border.width: modelData.urgency === 2 ? 2 : 1
 
                 opacity: 0
-                property real slideOffset: 20
-                Component.onCompleted: { opacity = 1; slideOffset = 0 }
-                transform: Translate { x: slideOffset; Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } } }
+                scale: 0.985
+                property real slideOffset: 24
+                Component.onCompleted: { opacity = 1; slideOffset = 0; scale = 1 }
+                transform: Translate { x: slideOffset; Behavior on x { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } } }
                 Behavior on opacity { NumberAnimation { duration: 200 } }
+                Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                Behavior on border.color { ColorAnimation { duration: 180 } }
 
                 Timer {
                     interval: 8000

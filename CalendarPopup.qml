@@ -102,8 +102,11 @@ PanelWindow {
         height: 372
         radius: 16
         color: Theme.bg
-        border.color: Theme.surface
+        border.color: Theme.surface1
         border.width: 1
+        opacity: root.visible ? 1 : 0
+        scale: root.visible ? 1 : 0.97
+        transformOrigin: Item.Top
 
         y: root.visible ? 38 : -height - 20
 
@@ -113,6 +116,9 @@ PanelWindow {
                 easing.type: Easing.OutCubic
             }
         }
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on border.color { ColorAnimation { duration: 180 } }
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 

@@ -21,6 +21,7 @@ PanelWindow {
     property var appLauncher: null
     property var clipboardMenu: null
     property var calendarPopup: null
+    property var weatherPopup: null
     property var themeMenu: null
     property var powerMenu: null
     property var audioPopup: null
@@ -756,13 +757,14 @@ PanelWindow {
         height: Math.min(640, parent.height - 40)
         radius: 20
         color: Theme.bg
-        border.color: Theme.surface
+        border.color: Theme.surface1
         border.width: 1
         opacity: root.visible ? 1 : 0
         scale: root.visible ? 1 : 0.97
 
         Behavior on opacity { NumberAnimation { duration: 160 } }
-        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on border.color { ColorAnimation { duration: 180 } }
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 
