@@ -30,6 +30,7 @@ PanelWindow {
     property var caffeineModule: null
     property var networkModule: null
     property var weatherModule: null
+    property var osd: null
 
     property string currentPage: "network"
     property string navZone: "sidebar"
@@ -62,6 +63,31 @@ PanelWindow {
     property var netWifiNetworks: []
     property bool netScanning: false
     property bool netWifiEnabled: true
+    property bool devInfoLoading: false
+    property string devHost: ""
+    property string devOs: ""
+    property string devKernel: ""
+    property string devArch: ""
+    property double devUptimeSec: 0
+    property string devCpu: ""
+    property int devCpuCores: 0
+    property int devCpuThreads: 0
+    property double devRamTotalKb: 0
+    property double devRamUsedKb: 0
+    property int devRamPct: 0
+    property double devSwapTotalKb: 0
+    property double devSwapUsedKb: 0
+    property int devSwapPct: 0
+    property var devGpus: []
+    property double devDiskUsedKb: 0
+    property double devDiskTotalKb: 0
+    property int devDiskPct: 0
+    property var devTemps: []
+    property real devGpuEdgeTemp: -1
+    property real devGpuPowerW: -1
+    property real devGpuSclkMhz: -1
+    property real devGpuMclkMhz: -1
+    property int devUpdatesCount: -1
     property var player: null
     property string mediaTitle: ""
     property string mediaArtist: ""
@@ -69,6 +95,11 @@ PanelWindow {
     property bool mediaPlaying: false
     property string activeColorPreset: ""
     property string wallpaperColorMode: "dark"
+    property bool themeApplyBusy: false
+    property string themeApplyStatus: ""
+    property string themeApplyMessage: ""
+    property string themeApplyName: ""
+    property string themeWallpaperPath: ""
     readonly property string colorPresetsFile: Quickshell.env("HOME") + "/.config/quickshell/color-presets.json"
     readonly property var stonePalette: {"bg": "#2d3033", "surface": "#36393d", "surface1": "#41454a", "overlay": "#949494", "fg": "#e8e8e6", "fgMuted": "#bdbdb8", "accent": "#6f9eb0", "accent2": "#aba884", "green": "#8faa84", "yellow": "#aba884", "orange": "#949494", "red": "#c07a7a", "mauve": "#6f9eb0"}
     readonly property var colorPresets: [
@@ -99,6 +130,7 @@ PanelWindow {
         { id: "notifications", icon: "󰂚", label: "Уведомления" },
         { id: "bar", icon: "󰕰", label: "Бар" },
         { id: "colors", icon: "󰏘", label: "Цвета" },
+        { id: "device", icon: "󰌢", label: "Устройство" },
         { id: "power", icon: "󰐥", label: "Питание" },
         { id: "general", icon: "󰒓", label: "Общие" }
     ]
@@ -135,6 +167,7 @@ PanelWindow {
         if (pageId === "notifications") return notifItemCount()
         if (pageId === "bar") return barItemCount()
         if (pageId === "colors") return colorsItemCount()
+        if (pageId === "device") return 1
         if (pageId === "power") return 5
         if (pageId === "general") return 8
         return 0
@@ -220,13 +253,15 @@ PanelWindow {
             }
         } else if (currentPage === "power") {
             var cmds = [
-                ["loginctl", "lock-session"],
-                ["niri", "msg", "action", "quit", "-s"],
-                ["systemctl", "suspend"],
-                ["systemctl", "reboot"],
-                ["systemctl", "poweroff"]
+                { cmd: ["loginctl", "lock-session"], danger: false },
+                { cmd: ["niri", "msg", "action", "quit", "-s"], danger: false },
+                { cmd: ["systemctl", "suspend"], danger: false },
+                { cmd: ["systemctl", "reboot"], danger: true },
+                { cmd: ["systemctl", "poweroff"], danger: true }
             ]
-            if (idx >= 0 && idx < cmds.length) { root.visible = false; Quickshell.execDetached(cmds[idx]) }
+            if (idx >= 0 && idx < cmds.length && !cmds[idx].danger) { root.visible = false; Quickshell.execDetached(cmds[idx].cmd) }
+        } else if (currentPage === "device") {
+            if (idx === 0) refreshDeviceInfo()
         } else if (currentPage === "general") {
             if (idx === 0) { if (caffeineModule) caffeineModule.toggle() }
             else if (idx === 1) Quickshell.execDetached(["niri", "msg", "action", "switch-layout", "next"])
@@ -246,6 +281,7 @@ PanelWindow {
             keyHandler.forceActiveFocus()
             if (currentPage === "network") refreshNetwork()
             if (currentPage === "audio") refreshBatteries()
+            if (currentPage === "device") refreshDeviceInfo()
         }
     }
 
@@ -254,6 +290,7 @@ PanelWindow {
         if (!visible) return
         if (currentPage === "network") refreshNetwork()
         if (currentPage === "audio") refreshBatteries()
+        if (currentPage === "device") refreshDeviceInfo()
     }
     function batteryIcon(percent) {
         var p = Math.max(0, Math.min(100, percent))
@@ -275,6 +312,37 @@ PanelWindow {
         return Theme.green
     }
     function refreshBatteries() { batteryProc.running = true }
+    function refreshDeviceInfo() {
+        deviceInfoProc.running = true
+        devSensorsProc.running = true
+        devUpdatesProc.running = true
+    }
+    function formatKb(kb) {
+        if (!kb || kb <= 0) return "0"
+        var kib = Number(kb)
+        var mib = kib / 1024
+        var gib = mib / 1024
+        if (gib >= 1) return gib.toFixed(gib >= 10 ? 1 : 2) + " ГиБ"
+        if (mib >= 1) return mib.toFixed(mib >= 10 ? 0 : 1) + " МиБ"
+        return Math.round(kib) + " КиБ"
+    }
+    function formatUptimeSec(sec) {
+        sec = Math.max(0, Math.floor(Number(sec) || 0))
+        var d = Math.floor(sec / 86400)
+        var h = Math.floor((sec % 86400) / 3600)
+        var m = Math.floor((sec % 3600) / 60)
+        var parts = []
+        if (d > 0) parts.push(d + " д")
+        if (h > 0 || d > 0) parts.push(h + " ч")
+        parts.push(m + " мин")
+        return parts.join(" ")
+    }
+    function deviceUsageColor(pct) {
+        pct = Number(pct) || 0
+        if (pct >= 90) return Theme.red
+        if (pct >= 75) return Theme.orange
+        return Theme.accent
+    }
     function nodeName(node) {
         if (!node) return "Unknown device"
         return node.description || node.nickname || node.name || "Unknown device"
@@ -336,27 +404,44 @@ PanelWindow {
     function applyColorPreset(preset) {
         if (!preset) return
         root.activeColorPreset = preset.id || ""
+        root.themeApplyName = preset.name || preset.id || ""
+        root.themeApplyBusy = true
+        root.themeApplyStatus = ""
+        root.themeApplyMessage = "Применение: " + root.themeApplyName + "..."
         var out = Quickshell.env("HOME") + "/.config/quickshell/matugen-colors.json"
         if (preset.kind === "custom" && preset.palette) {
+            root.themeWallpaperPath = ""
             try {
                 var jsonPal = JSON.stringify(preset.palette).replace(/'/g, "'\\''")
                 matugenApplyProc.command = ["bash", "-lc", "mkdir -p \"$HOME/.config/quickshell\" && printf '%s' '" + jsonPal + "' > " + out]
                 matugenApplyProc.running = true
-            } catch (e) {}
+            } catch (e) {
+                root.themeApplyBusy = false
+                root.themeApplyStatus = "error"
+                root.themeApplyMessage = "Ошибка подготовки палитры"
+            }
         } else if (preset.kind === "wallpaper") {
             var mode = root.wallpaperColorMode || "dark"
-            var cmdStr = "cfg=\"$HOME/.config/waypaper/config.ini\"; wp=''; " +
+            root.themeWallpaperPath = ""
+            var cmdStr = "set -e; cfg=\"$HOME/.config/waypaper/config.ini\"; wp=''; " +
                          "if [ -f \"$cfg\" ]; then " +
-                         "  wp=$(grep -E '^[[:space:]]*wallpaper[[:space:]]*=' \"$cfg\" 2>/dev/null | tail -n1 | sed 's/^[^=]*=//;s/^[[:space:]]*//;s/[[:space:]]*$//'); " +
+                         "  wp=$(awk -F= 'BEGIN{IGNORECASE=1} /^[[:space:]]*wallpaper[[:space:]]*=/{val=substr($0,index($0,\"=\")+1); gsub(/^[ \\t\\r]+|[ \\t\\r]+$/, \"\", val); print val}' \"$cfg\" 2>/dev/null | tail -n1); " +
                          "fi; " +
-                         "case \"$wp\" in \"~/\"*) wp=\"$HOME/${wp#~/}\";; '~') wp=\"$HOME\";; esac; " +
+                         "if [ -n \"$wp\" ]; then wp=\"${wp/#\\~/$HOME}\"; fi; " +
                          "if [ -z \"$wp\" ] || [ ! -f \"$wp\" ]; then " +
                          "  wp=$(find \"$HOME/Pictures/wallpapers\" \"$HOME/Pictures/Wallpapers\" \"$HOME/Загрузки/Wallpapers\" \"$HOME/wallpapers\" -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \\) 2>/dev/null | head -n 1); " +
                          "fi; " +
-                         "if [ -n \"$wp\" ] && [ -f \"$wp\" ]; then matugen image \"$wp\" -m " + mode + " --source-color-index 0; fi"
+                         "if [ -n \"$wp\" ] && [ -f \"$wp\" ]; then " +
+                         "  printf '%s' \"$wp\" > \"$HOME/.config/quickshell/.last-wallpaper-path\"; " +
+                         "  matugen image \"$wp\" -m " + mode + " --source-color-index 0; " +
+                         "else " +
+                         "  echo 'no wallpaper found' >&2; exit 2; " +
+                         "fi"
             matugenApplyProc.command = ["bash", "-lc", cmdStr]
             matugenApplyProc.running = true
+            themeWallpaperReadProc.running = true
         } else {
+            root.themeWallpaperPath = ""
             var cmd = ["matugen", "color", "hex", preset.seed, "-m", (preset.mode || "dark")]
             if (preset.type) cmd = cmd.concat(["-t", preset.type])
             matugenApplyProc.command = cmd
@@ -548,6 +633,126 @@ PanelWindow {
     Process { id: netActionProc; command: ["bash", "-c", "true"]; running: false; onExited: root.refreshNetwork() }
     Process { id: wifiToggleProc; command: ["bash", "-lc", "nmcli radio wifi on"]; running: false; onExited: root.refreshNetwork() }
 
+    Process {
+        id: deviceInfoProc
+        command: ["bash", "-c",
+            "printf 'HOST\\t%s\\n' \"$(cat /etc/hostname 2>/dev/null || hostnamectl hostname 2>/dev/null || uname -n 2>/dev/null)\"; " +
+            "os=$(grep -m1 '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d= -f2- | sed 's/^\"//;s/\"$//'); [ -z \"$os\" ] && os=\"$(uname -s 2>/dev/null)\"; printf 'OS\\t%s\\n' \"$os\"; " +
+            "printf 'KERNEL\\t%s\\n' \"$(uname -sr 2>/dev/null)\"; " +
+            "printf 'ARCH\\t%s\\n' \"$(uname -m 2>/dev/null)\"; " +
+            "printf 'UPTIME\\t%s\\n' \"$(cut -d. -f1 /proc/uptime 2>/dev/null || echo 0)\"; " +
+            "cpu=$(awk -F: '/^model name/{gsub(/^[ \\t]+/,\"\",$2); print $2; exit}' /proc/cpuinfo 2>/dev/null); " +
+            "[ -z \"$cpu\" ] && cpu=$(lscpu 2>/dev/null | awk -F: '/Model name/{gsub(/^[ \\t]+/,\"\",$2); print $2; exit}'); " +
+            "[ -z \"$cpu\" ] && cpu=\"$(uname -p 2>/dev/null)\"; printf 'CPU\\t%s\\n' \"$cpu\"; " +
+            "threads=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 0); " +
+            "cores=$(lscpu -p=CORE,SOCKET 2>/dev/null | grep -v '^#' | sort -u | wc -l 2>/dev/null); " +
+            "case \"$cores\" in ''|0) cores=$threads ;; esac; " +
+            "printf 'CPU_CORES\\t%s\\t%s\\n' \"$cores\" \"$threads\"; " +
+            "awk '/^MemTotal:/{mt=$2} /^MemAvailable:/{ma=$2} /^SwapTotal:/{st=$2} /^SwapFree:/{sf=$2} END{mu=mt-ma; if(mu<0)mu=0; su=st-sf; if(su<0)su=0; pct=(mt>0?int(mu*100/mt):0); spct=(st>0?int(su*100/st):0); printf \"RAM\\t%d\\t%d\\t%d\\nSWAP\\t%d\\t%d\\t%d\\n\", mt, mu, pct, st, su, spct}' /proc/meminfo 2>/dev/null; " +
+            "gpu=$(lspci 2>/dev/null | grep -Ei 'vga|3d|display' | sed 's/.*: //;s/ (rev[^)]*)//g' | awk '!seen[$0]++' | paste -sd '|' -); " +
+            "printf 'GPU\\t%s\\n' \"$gpu\"; " +
+            "df -Pk / 2>/dev/null | awk 'NR==2{gsub(/%/,\"\",$5); printf \"DISK\\t%s\\t%s\\t%s\\n\", $3, $2, $5}'"
+        ]
+        running: false
+        onStarted: root.devInfoLoading = true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.devInfoLoading = false
+                var lines = (this.text || "").split("\n")
+                var gpus = []
+                for (var i = 0; i < lines.length; i++) {
+                    var line = (lines[i] || "").replace(/\r/g, "").trim()
+                    if (line === "") continue
+                    var p = line.split("\t")
+                    var key = p[0] || ""
+                    if (key === "HOST") root.devHost = p.slice(1).join("\t").trim()
+                    else if (key === "OS") root.devOs = p.slice(1).join("\t").trim()
+                    else if (key === "KERNEL") root.devKernel = p.slice(1).join("\t").trim()
+                    else if (key === "ARCH") root.devArch = p.slice(1).join("\t").trim()
+                    else if (key === "UPTIME") root.devUptimeSec = parseFloat(p[1] || "0") || 0
+                    else if (key === "CPU") root.devCpu = p.slice(1).join("\t").trim()
+                    else if (key === "CPU_CORES") { root.devCpuCores = parseInt(p[1] || "0") || 0; root.devCpuThreads = parseInt(p[2] || "0") || 0 }
+                    else if (key === "RAM") { root.devRamTotalKb = parseFloat(p[1] || "0") || 0; root.devRamUsedKb = parseFloat(p[2] || "0") || 0; root.devRamPct = parseInt(p[3] || "0") || 0 }
+                    else if (key === "SWAP") { root.devSwapTotalKb = parseFloat(p[1] || "0") || 0; root.devSwapUsedKb = parseFloat(p[2] || "0") || 0; root.devSwapPct = parseInt(p[3] || "0") || 0 }
+                    else if (key === "GPU") {
+                        var gv = p.slice(1).join("\t").trim()
+                        if (gv !== "") gpus = gv.split("|").filter(function(x) { return (x || "").trim() !== "" })
+                    }
+                    else if (key === "DISK") { root.devDiskUsedKb = parseFloat(p[1] || "0") || 0; root.devDiskTotalKb = parseFloat(p[2] || "0") || 0; root.devDiskPct = parseInt(p[3] || "0") || 0 }
+                }
+                root.devGpus = gpus
+            }
+        }
+        onExited: (code, status) => { root.devInfoLoading = false }
+    }
+
+    Process {
+        id: devSensorsProc
+        command: ["bash", "-lc", "command -v sensors >/dev/null 2>&1 && sensors -j 2>/dev/null || echo '{}'"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var txt = (this.text || "").trim()
+                var temps = []
+                root.devGpuEdgeTemp = -1
+                root.devGpuPowerW = -1
+                root.devGpuSclkMhz = -1
+                root.devGpuMclkMhz = -1
+                try {
+                    var j = JSON.parse(txt || "{}")
+                    for (var chip in j) {
+                        if (!j.hasOwnProperty(chip)) continue
+                        var obj = j[chip]
+                        if (chip.indexOf("coretemp") === 0 || chip.indexOf("k10temp") === 0 || chip.indexOf("cpu") !== -1) {
+                            for (var k in obj) {
+                                if (!obj.hasOwnProperty(k) || k === "Adapter") continue
+                                var v = obj[k]
+                                if (v && typeof v === "object") {
+                                    for (var sk in v) {
+                                        if (sk.indexOf("temp") === 0 && sk.indexOf("_input") !== -1) {
+                                            temps.push({ label: chip.indexOf("coretemp") === 0 ? "CPU " + k : k, value: Number(v[sk]), max: Number(v[sk.replace("_input", "_max")] || v[sk.replace("_input", "_crit")] || 100) })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (chip.indexOf("amdgpu") === 0) {
+                            for (var ak in obj) {
+                                if (!obj.hasOwnProperty(ak) || ak === "Adapter") continue
+                                var av = obj[ak]
+                                if (ak === "edge" && av && av.temp1_input !== undefined) root.devGpuEdgeTemp = Number(av.temp1_input)
+                                if (ak === "PPT" && av && av.power1_input !== undefined) root.devGpuPowerW = Number(av.power1_input)
+                                if (ak === "sclk" && av && av.freq1_input !== undefined) root.devGpuSclkMhz = Number(av.freq1_input) / 1000000
+                                if (ak === "mclk" && av && av.freq2_input !== undefined) root.devGpuMclkMhz = Number(av.freq2_input) / 1000000
+                                if (av && typeof av === "object") {
+                                    for (var ask in av) {
+                                        if (ask.indexOf("temp") === 0 && ask.indexOf("_input") !== -1) {
+                                            temps.push({ label: "GPU " + ak, value: Number(av[ask]), max: Number(av[ask.replace("_input", "_crit")] || 100) })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {}
+                temps.sort(function(a, b) { return (b.value || 0) - (a.value || 0) })
+                root.devTemps = temps
+            }
+        }
+    }
+
+    Process {
+        id: devUpdatesProc
+        command: ["bash", "-lc", "if command -v pacman >/dev/null 2>&1; then c=$(pacman -Qu 2>/dev/null | wc -l); echo $c; elif command -v checkupdates >/dev/null 2>&1; then c=$(checkupdates 2>/dev/null | wc -l); echo $c; else echo -1; fi"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var v = parseInt((this.text || "").trim())
+                root.devUpdatesCount = isNaN(v) ? -1 : v
+            }
+        }
+    }
+
     FileView {
         id: colorPresetsView
         path: root.colorPresetsFile
@@ -565,7 +770,43 @@ PanelWindow {
         }
     }
 
-    Process { id: matugenApplyProc; command: ["true"]; running: false }
+    Process {
+        id: matugenApplyProc
+        command: ["true"]
+        running: false
+        onStarted: { root.themeApplyBusy = true }
+        onExited: (code, status) => {
+            root.themeApplyBusy = false
+            if (code === 0) {
+                root.themeApplyStatus = "ok"
+                root.themeApplyMessage = "Применено: " + (root.themeApplyName || "тема")
+            } else {
+                root.themeApplyStatus = "error"
+                var msg = "Ошибка применения"
+                if (code === 2) msg = "Обои не найдены (waypaper/config)"
+                else msg = "Ошибка применения (код " + code + ")"
+                root.themeApplyMessage = msg
+            }
+            themeStatusTimer.restart()
+            themeWallpaperReadProc.running = true
+        }
+    }
+    Process {
+        id: themeWallpaperReadProc
+        command: ["bash", "-lc", "cat \"$HOME/.config/quickshell/.last-wallpaper-path\" 2>/dev/null || true"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.themeWallpaperPath = (this.text || "").trim()
+            }
+        }
+    }
+    Timer {
+        id: themeStatusTimer
+        interval: 5000
+        repeat: false
+        onTriggered: { if (!root.themeApplyBusy) root.themeApplyStatus = "" }
+    }
     Process { id: colorPresetSaveProc; command: ["bash", "-c", "true"]; running: false }
 
     Timer {
@@ -1311,6 +1552,52 @@ PanelWindow {
                                 }
 
                                 Rectangle {
+                                    width: parent.width
+                                    radius: 12
+                                    color: Theme.surface
+                                    implicitHeight: brightCol.implicitHeight + 20
+                                    visible: BrightnessService.available || BrightnessService.ready
+                                    Column {
+                                        id: brightCol
+                                        anchors.fill: parent; anchors.margins: 10; spacing: 8
+                                        Row {
+                                            width: parent.width; spacing: 8
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: BrightnessService.percent >= 67 ? "󰃠" : (BrightnessService.percent >= 34 ? "󰃟" : "󰃞")
+                                                color: Theme.yellow
+                                                font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16
+                                            }
+                                            Column {
+                                                width: parent.width - 70; spacing: 2
+                                                Text { width: parent.width; text: "Яркость"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; elide: Text.ElideRight }
+                                                Text { text: BrightnessService.available ? (BrightnessService.device || "backlight") : "Не найдено устройство подсветки"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; elide: Text.ElideRight }
+                                            }
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: BrightnessService.available ? (BrightnessService.percent + "%") : "--"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+                                        }
+                                        Item {
+                                            width: parent.width; height: 18
+                                            visible: BrightnessService.available
+                                            Rectangle {
+                                                anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 6; radius: 3; color: Theme.bg
+                                                Rectangle {
+                                                    width: parent.width * Math.max(0, Math.min(1, BrightnessService.percent / 100))
+                                                    height: parent.height; radius: 3; color: Theme.yellow
+                                                    Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                                                }
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor
+                                                enabled: BrightnessService.available
+                                                onPressed: (mouse) => { var p = Math.round(Math.max(0, Math.min(1, mouse.x / width)) * 100); BrightnessService.setPercent(p); if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p }) }
+                                                onPositionChanged: (mouse) => { if (pressed) { var p = Math.round(Math.max(0, Math.min(1, mouse.x / width)) * 100); BrightnessService.setPercent(p); if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p }) } }
+                                                onWheel: (wheel) => { var step = wheel.angleDelta.y > 0 ? 5 : -5; var p = Math.max(0, Math.min(100, BrightnessService.percent + step)); BrightnessService.setPercent(p); if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p }) }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
                                     width: parent.width; height: 36; radius: 10
                                     color: openAudioMouse.containsMouse ? Theme.surface1 : Theme.surface
                                     border.color: Theme.surface1
@@ -1626,6 +1913,176 @@ PanelWindow {
                                     font.pixelSize: 10
                                     wrapMode: Text.WordWrap
                                 }
+
+                                Rectangle { width: parent.width; height: 1; color: Theme.surface }
+
+                                Text {
+                                    text: "Модули бара"
+                                    color: Theme.fg
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 14
+                                    font.bold: true
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    text: "Порядок, секция и видимость модулей. Изменения применяются сразу."
+                                    color: Theme.fgMuted
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 10
+                                    wrapMode: Text.WordWrap
+                                }
+
+                                Repeater {
+                                    model: [
+                                        { id: "left", title: "Слева", icon: "󰉢" },
+                                        { id: "center", title: "Центр", icon: "󰘞" },
+                                        { id: "right", title: "Справа", icon: "󰉣" }
+                                    ]
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        width: barCol.width
+                                        radius: 12
+                                        color: Theme.surface
+                                        border.color: Theme.surface1
+                                        implicitHeight: secCol.implicitHeight + 16
+
+                                        Column {
+                                            id: secCol
+                                            anchors.fill: parent
+                                            anchors.margins: 8
+                                            spacing: 6
+
+                                            Row {
+                                                width: parent.width
+                                                spacing: 8
+                                                Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.icon; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
+                                                Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.title; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
+                                            }
+
+                                            Repeater {
+                                                model: {
+                                                    var _o = BarConfig.moduleOrder
+                                                    var _h = BarConfig.hiddenModules
+                                                    return ((BarConfig.moduleOrder && BarConfig.moduleOrder[modelData.id]) ? BarConfig.moduleOrder[modelData.id] : []).slice()
+                                                }
+                                                delegate: Rectangle {
+                                                    required property var modelData
+                                                    required property int index
+                                                    property string sectionId: parent ? parent.parent.parent.modelData.id : ""
+                                                    width: secCol.width
+                                                    height: 38
+                                                    radius: 8
+                                                    color: modMouse.containsMouse ? Theme.surface1 : Theme.bg
+                                                    border.color: Theme.surface1
+                                                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                                                    property bool isHidden: BarConfig.isModuleHidden(modelData)
+                                                    property var meta: BarConfig.moduleMeta[modelData] || ({ name: modelData, icon: "󰘔" })
+
+                                                    MouseArea { id: modMouse; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
+
+                                                    Row {
+                                                        anchors.fill: parent
+                                                        anchors.leftMargin: 8
+                                                        anchors.rightMargin: 6
+                                                        spacing: 6
+
+                                                        Text {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            text: meta.icon
+                                                            color: isHidden ? Theme.fgMuted : Theme.fg
+                                                            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13
+                                                            opacity: isHidden ? 0.5 : 1
+                                                        }
+                                                        Text {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: Math.max(60, parent.width - 210)
+                                                            text: meta.name
+                                                            color: isHidden ? Theme.fgMuted : Theme.fg
+                                                            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
+                                                            elide: Text.ElideRight
+                                                            opacity: isHidden ? 0.6 : 1
+                                                        }
+
+                                                        Rectangle {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: 26; height: 26; radius: 6
+                                                            color: visBtn.containsMouse ? Theme.surface : "transparent"
+                                                            Text { anchors.centerIn: parent; text: isHidden ? "󰈉" : "󰈈"; color: isHidden ? Theme.fgMuted : Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
+                                                            MouseArea { id: visBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BarConfig.setModuleHidden(modelData, !isHidden) }
+                                                        }
+                                                        Rectangle {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: 26; height: 26; radius: 6
+                                                            color: upBtn.containsMouse ? Theme.surface : "transparent"
+                                                            opacity: index > 0 ? 1 : 0.35
+                                                            Text { anchors.centerIn: parent; text: "󰁝"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
+                                                            MouseArea { id: upBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: index > 0; onClicked: BarConfig.moveModule(modelData, -1) }
+                                                        }
+                                                        Rectangle {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: 26; height: 26; radius: 6
+                                                            color: downBtn.containsMouse ? Theme.surface : "transparent"
+                                                            property int secLen: ((BarConfig.moduleOrder && BarConfig.moduleOrder[sectionId]) ? BarConfig.moduleOrder[sectionId].length : 0)
+                                                            opacity: index < secLen - 1 ? 1 : 0.35
+                                                            Text { anchors.centerIn: parent; text: "󰁅"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
+                                                            MouseArea { id: downBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: index < parent.secLen - 1; onClicked: BarConfig.moveModule(modelData, 1) }
+                                                        }
+                                                        Rectangle {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: 26; height: 26; radius: 6
+                                                            visible: sectionId !== "left"
+                                                            color: toLeftBtn.containsMouse ? Theme.surface : "transparent"
+                                                            Text { anchors.centerIn: parent; text: "󰉢"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+                                                            MouseArea { id: toLeftBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BarConfig.moveModuleToSection(modelData, "left") }
+                                                        }
+                                                        Rectangle {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: 26; height: 26; radius: 6
+                                                            visible: sectionId !== "center"
+                                                            color: toCenterBtn.containsMouse ? Theme.surface : "transparent"
+                                                            Text { anchors.centerIn: parent; text: "󰘞"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+                                                            MouseArea { id: toCenterBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BarConfig.moveModuleToSection(modelData, "center") }
+                                                        }
+                                                        Rectangle {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: 26; height: 26; radius: 6
+                                                            visible: sectionId !== "right"
+                                                            color: toRightBtn.containsMouse ? Theme.surface : "transparent"
+                                                            Text { anchors.centerIn: parent; text: "󰉣"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+                                                            MouseArea { id: toRightBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BarConfig.moveModuleToSection(modelData, "right") }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 40
+                                    radius: 10
+                                    color: resetModulesMouse.containsMouse ? Theme.surface1 : Theme.surface
+                                    border.color: Theme.surface1
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 8
+                                        Text { text: "󰑓"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
+                                        Text { text: "Сбросить порядок и видимость модулей"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+                                    }
+
+                                    MouseArea {
+                                        id: resetModulesMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: BarConfig.resetModuleLayout()
+                                    }
+                                }
                             }
                         }
                         Flickable {
@@ -1679,6 +2136,37 @@ PanelWindow {
                                                     color: Theme[modelData]
                                                     border.color: Theme.overlay
                                                     border.width: 1
+                                                }
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            width: parent.width
+                                            height: 32
+                                            radius: 8
+                                            visible: root.themeApplyBusy || root.themeApplyStatus !== "" || root.themeApplyMessage !== ""
+                                            color: Theme.bg
+                                            border.color: root.themeApplyBusy ? Theme.accent : (root.themeApplyStatus === "error" ? Theme.red : Theme.green)
+                                            border.width: 1
+
+                                            Row {
+                                                anchors.fill: parent
+                                                anchors.leftMargin: 8
+                                                anchors.rightMargin: 8
+                                                spacing: 8
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: root.themeApplyBusy ? "󰑓" : (root.themeApplyStatus === "error" ? "󰅚" : "󰄬")
+                                                    color: root.themeApplyBusy ? Theme.accent : (root.themeApplyStatus === "error" ? Theme.red : Theme.green)
+                                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13
+                                                }
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    width: parent.width - 24
+                                                    text: root.themeApplyMessage !== "" ? root.themeApplyMessage : (root.themeApplyBusy ? "Применение темы..." : "Тема применена")
+                                                    color: Theme.fg
+                                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
+                                                    elide: Text.ElideRight
                                                 }
                                             }
                                         }
@@ -2026,6 +2514,439 @@ PanelWindow {
                             }
                         }
                         Flickable {
+                            id: pageDevice
+                            anchors.fill: parent
+                            opacity: root.currentPage === "device" ? 1 : 0
+                            visible: opacity > 0
+                            transform: Translate { x: root.currentPage === "device" ? 0 : 12 }
+                            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.InOutQuad } }
+                            clip: true
+                            contentWidth: width
+                            contentHeight: devCol.implicitHeight
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            Column {
+                                id: devCol
+                                width: parent.width
+                                spacing: 12
+
+                                Rectangle {
+                                    width: parent.width
+                                    radius: 12
+                                    color: devRefreshMouse.containsMouse ? Theme.surface1 : Theme.surface
+                                    border.color: (root.navZone === "content" && root.currentPage === "device" && root.contentFocusIndex === 0) ? Theme.accent : Theme.surface1
+                                    border.width: (root.navZone === "content" && root.currentPage === "device" && root.contentFocusIndex === 0) ? 2 : 1
+                                    implicitHeight: devHeadCol.implicitHeight + 20
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                                    Row {
+                                        id: devHeadCol
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 12
+
+                                        Rectangle {
+                                            width: 46; height: 46; radius: 12
+                                            color: Theme.surface1
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "󰌢"
+                                                color: Theme.accent
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 22
+                                            }
+                                        }
+
+                                        Column {
+                                            width: parent.width - 120
+                                            spacing: 2
+                                            Text {
+                                                width: parent.width
+                                                text: root.devHost !== "" ? root.devHost : "Устройство"
+                                                color: Theme.fg
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 15
+                                                font.bold: true
+                                                elide: Text.ElideRight
+                                            }
+                                            Text {
+                                                width: parent.width
+                                                text: (root.devOs !== "" ? root.devOs : "Система") + (root.devArch !== "" ? " · " + root.devArch : "")
+                                                color: Theme.fgMuted
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 11
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: root.devInfoLoading ? "󰑓" : "󰑐"
+                                            color: devRefreshMouse.containsMouse ? Theme.accent : Theme.fgMuted
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 16
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: devRefreshMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.refreshDeviceInfo()
+                                    }
+                                }
+
+                                Text { text: "Система"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+
+                                GridLayout {
+                                    width: parent.width
+                                    columns: 2
+                                    columnSpacing: 10
+                                    rowSpacing: 10
+
+                                    Repeater {
+                                        model: [
+                                            { icon: "󰣇", label: "Дистрибутив", value: root.devOs !== "" ? root.devOs : "—" },
+                                            { icon: "󰌽", label: "Ядро", value: root.devKernel !== "" ? root.devKernel : "—" },
+                                            { icon: "󰅐", label: "Аптайм", value: root.devUptimeSec > 0 ? root.formatUptimeSec(root.devUptimeSec) : "—" },
+                                            { icon: "󰘚", label: "Архитектура", value: root.devArch !== "" ? root.devArch : "—" }
+                                        ]
+                                        delegate: Rectangle {
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: 60
+                                            radius: 12
+                                            color: Theme.surface
+                                            border.color: Theme.surface1
+                                            border.width: 1
+
+                                            Row {
+                                                anchors.fill: parent
+                                                anchors.margins: 10
+                                                spacing: 10
+
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: modelData.icon
+                                                    color: Theme.accent
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 16
+                                                }
+                                                Column {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    width: parent.width - 34
+                                                    spacing: 1
+                                                    Text {
+                                                        width: parent.width
+                                                        text: modelData.label
+                                                        color: Theme.fgMuted
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 10
+                                                        elide: Text.ElideRight
+                                                    }
+                                                    Text {
+                                                        width: parent.width
+                                                        text: modelData.value
+                                                        color: Theme.fg
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 12
+                                                        elide: Text.ElideRight
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text { text: "Ресурсы"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+
+                                Repeater {
+                                    model: [
+                                        {
+                                            icon: "󰍛",
+                                            label: "Память (RAM)",
+                                            used: root.devRamUsedKb,
+                                            total: root.devRamTotalKb,
+                                            pct: root.devRamPct,
+                                            detail: root.devRamTotalKb > 0 ? (root.formatKb(root.devRamUsedKb) + " / " + root.formatKb(root.devRamTotalKb)) : "—"
+                                        },
+                                        {
+                                            icon: "󰾴",
+                                            label: "Подкачка (Swap)",
+                                            used: root.devSwapUsedKb,
+                                            total: root.devSwapTotalKb,
+                                            pct: root.devSwapPct,
+                                            detail: root.devSwapTotalKb > 0 ? (root.formatKb(root.devSwapUsedKb) + " / " + root.formatKb(root.devSwapTotalKb)) : "Не настроен"
+                                        },
+                                        {
+                                            icon: "󰋊",
+                                            label: "Диск /",
+                                            used: root.devDiskUsedKb,
+                                            total: root.devDiskTotalKb,
+                                            pct: root.devDiskPct,
+                                            detail: root.devDiskTotalKb > 0 ? (root.formatKb(root.devDiskUsedKb) + " / " + root.formatKb(root.devDiskTotalKb)) : "—"
+                                        }
+                                    ]
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        width: devCol.width
+                                        radius: 12
+                                        color: Theme.surface
+                                        border.color: Theme.surface1
+                                        border.width: 1
+                                        implicitHeight: resCol.implicitHeight + 20
+
+                                        Column {
+                                            id: resCol
+                                            anchors.fill: parent
+                                            anchors.margins: 10
+                                            spacing: 6
+
+                                            Row {
+                                                width: parent.width
+                                                spacing: 8
+
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: modelData.icon
+                                                    color: root.deviceUsageColor(modelData.pct)
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 14
+                                                }
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    width: parent.width - 150
+                                                    text: modelData.label
+                                                    color: Theme.fg
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 12
+                                                    elide: Text.ElideRight
+                                                }
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    width: 110
+                                                    horizontalAlignment: Text.AlignRight
+                                                    text: modelData.total > 0 ? (modelData.pct + "%") : ""
+                                                    color: Theme.fgMuted
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 11
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                width: parent.width
+                                                height: 6
+                                                radius: 3
+                                                color: Theme.surface1
+
+                                                Rectangle {
+                                                    height: parent.height
+                                                    radius: 3
+                                                    color: root.deviceUsageColor(modelData.pct)
+                                                    width: parent.width * Math.max(0, Math.min(1, (modelData.pct || 0) / 100))
+                                                    Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                                                    Behavior on color { ColorAnimation { duration: 180 } }
+                                                }
+                                            }
+
+                                            Text {
+                                                width: parent.width
+                                                text: modelData.detail
+                                                color: Theme.fgMuted
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 10
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text { text: "Оборудование"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+
+                                Rectangle {
+                                    width: parent.width
+                                    radius: 12
+                                    color: Theme.surface
+                                    border.color: Theme.surface1
+                                    border.width: 1
+                                    implicitHeight: hwCol.implicitHeight + 20
+
+                                    Column {
+                                        id: hwCol
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 8
+
+                                        Row {
+                                            width: parent.width
+                                            spacing: 10
+                                            Text { text: "󰻠"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                            Column {
+                                                width: parent.width - 30
+                                                spacing: 1
+                                                Text { text: "Процессор"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                Text {
+                                                    width: parent.width
+                                                    text: root.devCpu !== "" ? root.devCpu : "—"
+                                                    color: Theme.fg
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 12
+                                                    wrapMode: Text.WordWrap
+                                                }
+                                                Text {
+                                                    visible: root.devCpuCores > 0 || root.devCpuThreads > 0
+                                                    width: parent.width
+                                                    text: (root.devCpuCores > 0 ? (root.devCpuCores + " ядер") : "") + (root.devCpuCores > 0 && root.devCpuThreads > 0 ? " · " : "") + (root.devCpuThreads > 0 ? (root.devCpuThreads + " потоков") : "")
+                                                    color: Theme.fgMuted
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 10
+                                                }
+                                            }
+                                        }
+
+                                        Rectangle { width: parent.width; height: 1; color: Theme.surface1 }
+
+                                        Repeater {
+                                            model: root.devGpus && root.devGpus.length > 0 ? root.devGpus : ["—"]
+                                            delegate: Row {
+                                                required property var modelData
+                                                width: hwCol.width
+                                                spacing: 10
+                                                Text {
+                                                    text: "󰢮"
+                                                    color: Theme.accent
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 16
+                                                }
+                                                Column {
+                                                    width: parent.width - 30
+                                                    spacing: 1
+                                                    Text { text: "Видеокарта"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                    Text {
+                                                        width: parent.width
+                                                        text: modelData
+                                                        color: Theme.fg
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 12
+                                                        wrapMode: Text.WordWrap
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Rectangle { width: parent.width; height: 1; color: Theme.surface1 }
+
+                                        Row {
+                                            width: parent.width
+                                            spacing: 10
+                                            Text { text: "󰍹"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                            Column {
+                                                width: parent.width - 30
+                                                spacing: 1
+                                                Text { text: "Сессия"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                Text {
+                                                    width: parent.width
+                                                    text: (Quickshell.env("XDG_CURRENT_DESKTOP") || Quickshell.env("DESKTOP_SESSION") || "—") + (Quickshell.env("XDG_SESSION_TYPE") ? " · " + Quickshell.env("XDG_SESSION_TYPE") : "")
+                                                    color: Theme.fg
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 12
+                                                    wrapMode: Text.WordWrap
+                                                }
+                                            }
+                                        }
+
+                                        Rectangle { width: parent.width; height: 1; color: Theme.surface1 }
+
+                                        Row {
+                                            width: parent.width
+                                            spacing: 10
+                                            Text { text: "󰏔"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                            Column {
+                                                width: parent.width - 30
+                                                spacing: 1
+                                                Text { text: "Обновления пакетов"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                Text {
+                                                    width: parent.width
+                                                    text: root.devUpdatesCount < 0 ? "Недоступно" : (root.devUpdatesCount + " доступно")
+                                                    color: root.devUpdatesCount > 0 ? Theme.yellow : Theme.fg
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 12
+                                                    wrapMode: Text.WordWrap
+                                                }
+                                            }
+                                        }
+
+                                        Column {
+                                            width: parent.width
+                                            spacing: 4
+                                            visible: root.devGpuEdgeTemp >= 0 || root.devGpuPowerW >= 0 || root.devGpuSclkMhz >= 0 || root.devGpuMclkMhz >= 0
+
+                                            Rectangle { width: parent.width; height: 1; color: Theme.surface1 }
+
+                                            Row {
+                                                width: parent.width
+                                                spacing: 10
+                                                Text { text: "󰢮"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                                Column {
+                                                    width: parent.width - 30
+                                                    spacing: 1
+                                                    Text { text: "GPU (статистика)"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                    Text {
+                                                        width: parent.width
+                                                        text: {
+                                                            var parts = []
+                                                            if (root.devGpuEdgeTemp >= 0) parts.push(Math.round(root.devGpuEdgeTemp) + "°C")
+                                                            if (root.devGpuPowerW >= 0) parts.push(root.devGpuPowerW.toFixed(1) + " W")
+                                                            if (root.devGpuSclkMhz >= 0) parts.push("SCLK " + Math.round(root.devGpuSclkMhz) + " MHz")
+                                                            if (root.devGpuMclkMhz >= 0) parts.push("MCLK " + Math.round(root.devGpuMclkMhz) + " MHz")
+                                                            return parts.length > 0 ? parts.join(" · ") : "—"
+                                                        }
+                                                        color: Theme.fg
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 12
+                                                        wrapMode: Text.WordWrap
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Column {
+                                            width: parent.width
+                                            spacing: 4
+                                            visible: root.devTemps && root.devTemps.length > 0
+
+                                            Rectangle { width: parent.width; height: 1; color: Theme.surface1 }
+
+                                            Row {
+                                                width: parent.width
+                                                spacing: 10
+                                                Text { text: "󰔏"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                                Column {
+                                                    width: parent.width - 30
+                                                    spacing: 3
+                                                    Text { text: "Температуры"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                    Repeater {
+                                                        model: (root.devTemps || []).slice(0, 6)
+                                                        delegate: Text {
+                                                            required property var modelData
+                                                            width: parent ? parent.width : 100
+                                                            text: (modelData.label || "Sensor") + ": " + Math.round(Number(modelData.value || 0)) + "°C"
+                                                            color: (Number(modelData.value || 0) >= 85) ? Theme.red : ((Number(modelData.value || 0) >= 70) ? Theme.orange : Theme.fg)
+                                                            font.family: "JetBrainsMono Nerd Font"
+                                                            font.pixelSize: 11
+                                                            elide: Text.ElideRight
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Flickable {
                             id: pagePower
                             anchors.fill: parent
                             opacity: root.currentPage === "power" ? 1 : 0
@@ -2042,6 +2963,62 @@ PanelWindow {
                                 width: parent.width
                                 spacing: 10
 
+                                Rectangle {
+                                    width: parent.width
+                                    radius: 12
+                                    color: Theme.surface
+                                    visible: PowerProfileService.available
+                                    implicitHeight: ppCol.implicitHeight + 20
+
+                                    Column {
+                                        id: ppCol
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 8
+
+                                        Row {
+                                            width: parent.width
+                                            spacing: 8
+                                            Text { text: "󰾅"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                            Text { text: "Профиль питания"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+                                        }
+
+                                        Row {
+                                            width: parent.width
+                                            spacing: 8
+                                            Repeater {
+                                                model: PowerProfileService.profiles || []
+                                                delegate: Rectangle {
+                                                    required property var modelData
+                                                    width: (ppCol.width - 16) / Math.max(1, (PowerProfileService.profiles || []).length)
+                                                    height: 42
+                                                    radius: 10
+                                                    property bool active: PowerProfileService.current === modelData
+                                                    color: active ? Theme.accent : (ppMouse.containsMouse ? Theme.surface1 : Theme.bg)
+                                                    border.color: active ? Theme.accent : Theme.surface1
+                                                    border.width: 1
+                                                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                                                    Column {
+                                                        anchors.centerIn: parent
+                                                        spacing: 1
+                                                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.iconFor(modelData); color: active ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
+                                                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.labelFor(modelData); color: active ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                                    }
+
+                                                    MouseArea {
+                                                        id: ppMouse
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: PowerProfileService.setProfile(modelData)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 Repeater {
                                     model: [
                                         { icon: "󰌾", label: "Заблокировать", cmd: ["loginctl", "lock-session"], danger: false },
@@ -2052,23 +3029,100 @@ PanelWindow {
                                     ]
                                     delegate: Rectangle {
                                         required property var modelData
+                                        required property int index
                                         width: powerCol.width
                                         height: 52
                                         radius: 12
-                                        color: pMouse.containsMouse ? (modelData.danger ? Theme.red : Theme.accent) : Theme.surface
-                                        border.color: Theme.surface1
+                                        color: pHoldArea.containsMouse ? (modelData.danger ? Theme.red : Theme.accent) : Theme.surface
+                                        border.color: (root.navZone === "content" && root.currentPage === "power" && root.contentFocusIndex === index) ? Theme.accent : Theme.surface1
+                                        border.width: (root.navZone === "content" && root.currentPage === "power" && root.contentFocusIndex === index) ? 2 : 1
                                         Behavior on color { ColorAnimation { duration: 150 } }
                                         Behavior on border.color { ColorAnimation { duration: 150 } }
 
+                                        Rectangle {
+                                            anchors.left: parent.left
+                                            anchors.top: parent.top
+                                            anchors.bottom: parent.bottom
+                                            width: parent.width * pHoldArea.holdProgress
+                                            radius: 12
+                                            color: modelData.danger ? Theme.red : Theme.accent
+                                            opacity: pHoldArea.pressed ? 0.35 : 0.18
+                                            visible: modelData.danger
+                                        }
+
                                         Row {
-                                            anchors.fill: parent; anchors.leftMargin: 14; spacing: 12
-                                            Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.icon; color: pMouse.containsMouse ? Theme.bg : (modelData.danger ? Theme.red : Theme.fg); font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
-                                            Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.label; color: pMouse.containsMouse ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
+                                            anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 12
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.icon; color: pHoldArea.containsMouse ? Theme.bg : (modelData.danger ? Theme.red : Theme.fg); font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
+                                            Text { anchors.verticalCenter: parent.verticalCenter; width: Math.max(80, parent.width - 220); text: modelData.label; color: pHoldArea.containsMouse ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; elide: Text.ElideRight }
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                visible: modelData.danger
+                                                text: pHoldArea.holdProgress >= 1 ? "Отпустите для подтверждения" : (pHoldArea.pressed ? "Удерживайте..." : "Удержание для подтверждения")
+                                                color: pHoldArea.containsMouse ? Theme.bg : Theme.fgMuted
+                                                font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10
+                                                elide: Text.ElideRight
+                                            }
                                         }
                                         MouseArea {
-                                            id: pMouse
+                                            id: pHoldArea
                                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                            onClicked: { root.visible = false; Quickshell.execDetached(modelData.cmd) }
+                                            property real holdProgress: 0
+                                            property bool triggered: false
+
+                                            NumberAnimation {
+                                                id: pHoldAnim
+                                                target: pHoldArea
+                                                property: "holdProgress"
+                                                from: pHoldArea.holdProgress
+                                                to: 1
+                                                duration: Math.max(120, Math.round(900 * (1 - pHoldArea.holdProgress)))
+                                                easing.type: Easing.Linear
+                                                onFinished: {
+                                                    if (pHoldArea.pressed && !pHoldArea.triggered && pHoldArea.holdProgress >= 0.999) {
+                                                        pHoldArea.triggered = true
+                                                        root.visible = false
+                                                        Quickshell.execDetached(modelData.cmd)
+                                                    }
+                                                }
+                                            }
+                                            NumberAnimation {
+                                                id: pHoldCancelAnim
+                                                target: pHoldArea
+                                                property: "holdProgress"
+                                                to: 0
+                                                duration: 180
+                                                easing.type: Easing.OutQuad
+                                            }
+
+                                            onPressed: {
+                                                triggered = false
+                                                if (modelData.danger) {
+                                                    pHoldCancelAnim.stop()
+                                                    pHoldAnim.from = holdProgress
+                                                    pHoldAnim.duration = Math.max(120, Math.round(900 * (1 - holdProgress)))
+                                                    pHoldAnim.start()
+                                                }
+                                            }
+                                            onReleased: {
+                                                if (!modelData.danger) {
+                                                    if (containsMouse && !triggered) {
+                                                        triggered = true
+                                                        root.visible = false
+                                                        Quickshell.execDetached(modelData.cmd)
+                                                    }
+                                                    holdProgress = 0
+                                                    return
+                                                }
+                                                if (!triggered) {
+                                                    pHoldAnim.stop()
+                                                    pHoldCancelAnim.start()
+                                                }
+                                            }
+                                            onCanceled: {
+                                                pHoldAnim.stop()
+                                                triggered = false
+                                                pHoldCancelAnim.start()
+                                            }
                                         }
                                     }
                                 }

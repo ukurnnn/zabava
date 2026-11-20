@@ -277,7 +277,7 @@ PanelWindow {
                         width: 60
                         height: 60
                         radius: 12
-                        color: hoverPowerArea.containsMouse
+                        color: holdArea.containsMouse
                             ? (modelData.dangerous ? Theme.red : Theme.accent)
                             : Theme.surface
 
@@ -290,7 +290,7 @@ PanelWindow {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.icon
-                                color: hoverPowerArea.containsMouse ? Theme.bg : Theme.fg
+                                color: holdArea.containsMouse ? Theme.bg : Theme.fg
                                 font.family: "JetBrainsMono Nerd Font"
                                 font.pixelSize: 20
                             }
@@ -298,20 +298,98 @@ PanelWindow {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.label
-                                color: hoverPowerArea.containsMouse ? Theme.bg : Theme.fg
+                                color: holdArea.containsMouse ? Theme.bg : Theme.fg
                                 font.family: "JetBrainsMono Nerd Font"
                                 font.pixelSize: 9
                             }
                         }
 
+                        Rectangle {
+                            id: holdFill
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: parent.width * holdArea.holdProgress
+                            radius: 12
+                            color: modelData.dangerous ? Theme.red : Theme.accent
+                            opacity: holdArea.pressed ? 0.35 : 0.18
+                            visible: modelData.dangerous
+                            Behavior on opacity { NumberAnimation { duration: 120 } }
+                        }
+
+                        Text {
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 4
+                            visible: modelData.dangerous && (holdArea.pressed || holdArea.holdProgress > 0)
+                            text: holdArea.holdProgress >= 1 ? "✓" : "Удерж."
+                            color: holdArea.containsMouse || holdArea.pressed ? Theme.bg : Theme.fgMuted
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 7
+                            opacity: 0.9
+                        }
+
                         MouseArea {
-                            id: hoverPowerArea
+                            id: holdArea
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                Quickshell.execDetached(modelData.cmd)
-                                root.visible = false
+                            property real holdProgress: 0
+                            property bool triggered: false
+
+                            NumberAnimation {
+                                id: holdAnim
+                                target: holdArea
+                                property: "holdProgress"
+                                from: holdArea.holdProgress
+                                to: 1
+                                duration: Math.max(120, Math.round(900 * (1 - holdArea.holdProgress)))
+                                easing.type: Easing.Linear
+                                onFinished: {
+                                    if (holdArea.pressed && !holdArea.triggered && holdArea.holdProgress >= 0.999) {
+                                        holdArea.triggered = true
+                                        Quickshell.execDetached(modelData.cmd)
+                                        root.visible = false
+                                    }
+                                }
+                            }
+                            NumberAnimation {
+                                id: holdCancelAnim
+                                target: holdArea
+                                property: "holdProgress"
+                                to: 0
+                                duration: 180
+                                easing.type: Easing.OutQuad
+                            }
+
+                            onPressed: {
+                                triggered = false
+                                if (modelData.dangerous) {
+                                    holdCancelAnim.stop()
+                                    holdAnim.from = holdProgress
+                                    holdAnim.duration = Math.max(120, Math.round(900 * (1 - holdProgress)))
+                                    holdAnim.start()
+                                }
+                            }
+                            onReleased: {
+                                if (!modelData.dangerous) {
+                                    if (containsMouse && !triggered) {
+                                        triggered = true
+                                        Quickshell.execDetached(modelData.cmd)
+                                        root.visible = false
+                                    }
+                                    holdProgress = 0
+                                    return
+                                }
+                                if (!triggered) {
+                                    holdAnim.stop()
+                                    holdCancelAnim.start()
+                                }
+                            }
+                            onCanceled: {
+                                holdAnim.stop()
+                                triggered = false
+                                holdCancelAnim.start()
                             }
                         }
                     }

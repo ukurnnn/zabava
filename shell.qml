@@ -6,6 +6,8 @@ import Quickshell.Services.Notifications
 import "."
 
 ShellRoot {
+    id: rootShell
+
     NotificationServer {
         id: notifServer
         keepOnReload: true
@@ -15,6 +17,8 @@ ShellRoot {
             notif.tracked = true
         }
     }
+
+    property bool _brightnessOsdReady: false
 
     PanelWindow {
         id: mainPanel
@@ -26,6 +30,82 @@ ShellRoot {
         implicitHeight: BarConfig.style === "full" ? 44 : 52
         color: "transparent"
         exclusiveZone: BarConfig.style === "full" ? 40 : 48
+
+        property var moduleItems: ({
+            workspaces: wsIsland,
+            mpris: mprisIsland,
+            clock: centerIsland,
+            volume: volIsland,
+            sysmon: sysIsland,
+            layout: layoutIsland,
+            network: netIsland,
+            tray: trayIsland,
+            power: powerIsland
+        })
+
+        function applyBarLayout() {
+            var style = BarConfig.style
+            var edgeMargin = (style === "full") ? 4 : 8
+            var gap = (style === "islands") ? 6 : 0
+            var topMargin = (style === "full") ? 4 : 6
+
+            function applySection(section, side) {
+                var order = BarConfig.visibleOrder(section) || []
+                var allIds = (BarConfig.defaultModuleOrder[section] || []).slice()
+                for (var h = 0; h < allIds.length; h++) {
+                    var hid = allIds[h]
+                    if (moduleItems[hid]) moduleItems[hid].visible = false
+                }
+                var prev = null
+                for (var i = 0; i < order.length; i++) {
+                    var id = order[i]
+                    var item = moduleItems[id]
+                    if (!item) continue
+                    item.visible = true
+                    item.anchors.topMargin = topMargin
+                    if (side === "left") {
+                        item.anchors.right = undefined
+                        item.anchors.horizontalCenter = undefined
+                        if (prev === null) {
+                            item.anchors.left = mainPanel.contentItem.left
+                            item.anchors.leftMargin = edgeMargin
+                        } else {
+                            item.anchors.left = prev.right
+                            item.anchors.leftMargin = gap
+                        }
+                    } else if (side === "right") {
+                        item.anchors.left = undefined
+                        item.anchors.horizontalCenter = undefined
+                        if (prev === null) {
+                            item.anchors.right = mainPanel.contentItem.right
+                            item.anchors.rightMargin = edgeMargin
+                        } else {
+                            item.anchors.right = prev.left
+                            item.anchors.rightMargin = gap
+                        }
+                    } else if (side === "center") {
+                        item.anchors.left = undefined
+                        item.anchors.right = undefined
+                        item.anchors.leftMargin = 0
+                        item.anchors.rightMargin = 0
+                        item.anchors.horizontalCenter = mainPanel.contentItem.horizontalCenter
+                    }
+                    prev = item
+                }
+            }
+
+            applySection("left", "left")
+            applySection("right", "right")
+            applySection("center", "center")
+        }
+
+        Component.onCompleted: Qt.callLater(applyBarLayout)
+        Connections {
+            target: BarConfig
+            function onStyleChanged() { mainPanel.applyBarLayout() }
+            function onModuleOrderChanged() { mainPanel.applyBarLayout() }
+            function onHiddenModulesChanged() { mainPanel.applyBarLayout() }
+        }
 
         Behavior on implicitHeight { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
 
@@ -54,6 +134,7 @@ ShellRoot {
 
         Rectangle {
             id: wsIsland
+            property string moduleId: "workspaces"
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.leftMargin: BarConfig.style === "full" ? 4 : 8
@@ -108,6 +189,7 @@ ShellRoot {
 
         Rectangle {
             id: mprisIsland
+            property string moduleId: "mpris"
             anchors.left: wsIsland.right
             anchors.top: parent.top
             anchors.leftMargin: BarConfig.style === "islands" ? 6 : 0
@@ -145,6 +227,7 @@ ShellRoot {
         // ===== ЦЕНТР: Один островок =====
         Rectangle {
             id: centerIsland
+            property string moduleId: "clock"
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             anchors.topMargin: BarConfig.style === "full" ? 4 : 6
@@ -231,6 +314,7 @@ ShellRoot {
 
         Rectangle {
             id: powerIsland
+            property string moduleId: "power"
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.rightMargin: BarConfig.style === "full" ? 4 : 8
@@ -256,6 +340,7 @@ ShellRoot {
 
         Rectangle {
             id: trayIsland
+            property string moduleId: "tray"
             anchors.right: powerIsland.left
             anchors.top: parent.top
             anchors.rightMargin: BarConfig.style === "islands" ? 6 : 0
@@ -281,6 +366,7 @@ ShellRoot {
 
         Rectangle {
             id: netIsland
+            property string moduleId: "network"
             anchors.right: trayIsland.left
             anchors.top: parent.top
             anchors.rightMargin: BarConfig.style === "islands" ? 6 : 0
@@ -306,6 +392,7 @@ ShellRoot {
 
         Rectangle {
             id: layoutIsland
+            property string moduleId: "layout"
             anchors.right: netIsland.left
             anchors.top: parent.top
             anchors.rightMargin: BarConfig.style === "islands" ? 6 : 0
@@ -330,6 +417,7 @@ ShellRoot {
 
         Rectangle {
             id: sysIsland
+            property string moduleId: "sysmon"
             anchors.right: layoutIsland.left
             anchors.top: parent.top
             anchors.rightMargin: BarConfig.style === "islands" ? 6 : 0
@@ -354,6 +442,7 @@ ShellRoot {
 
         Rectangle {
             id: volIsland
+            property string moduleId: "volume"
             anchors.right: sysIsland.left
             anchors.top: parent.top
             anchors.rightMargin: BarConfig.style === "islands" ? 6 : 0
@@ -374,6 +463,7 @@ ShellRoot {
                 id: volRow
                 anchors.centerIn: parent
                 popup: audioPopup
+                osd: osd
             }
         }
     }
@@ -416,6 +506,7 @@ ShellRoot {
         id: audioPopup
         panelWindow: mainPanel
         anchorItem: volRow
+        osd: osd
     }
 
     NetworkPopup {
@@ -439,5 +530,37 @@ ShellRoot {
         caffeineModule: caffeineModule
         networkModule: netRow
         weatherModule: weatherModule
+        osd: osd
+    }
+
+    Osd {
+        id: osd
+    }
+
+    Connections {
+        target: BrightnessService
+        function onPercentChanged() {
+            if (!BrightnessService.available) return
+            if (!rootShell._brightnessOsdReady) {
+                rootShell._brightnessOsdReady = true
+                return
+            }
+            osd.showOsd({
+                icon: BrightnessService.percent >= 67 ? "󰃠" : (BrightnessService.percent >= 34 ? "󰃟" : "󰃞"),
+                label: "Яркость: " + BrightnessService.percent + "%",
+                value: BrightnessService.percent
+            })
+        }
+    }
+
+    Connections {
+        target: NiriService
+        function onKeyboardLayoutIdxChanged() {
+            osd.showOsd({
+                icon: "󰌌",
+                label: "Раскладка: " + (NiriService.keyboardLayoutIdx === 0 ? "EN" : "RU"),
+                value: -1
+            })
+        }
     }
 }

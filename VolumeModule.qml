@@ -8,12 +8,29 @@ Item {
     implicitHeight: 24
 
     property var popup: null
+    property var osd: null
 
     property var sink: Pipewire.defaultAudioSink
     property var sinkAudio: sink ? sink.audio : null
 
     property var source: Pipewire.defaultAudioSource
     property var sourceAudio: source ? source.audio : null
+
+    function showSinkOsd() {
+        if (!root.osd || !root.sinkAudio) return
+        var muted = root.sinkAudio.muted
+        var vol = Math.round(root.sinkAudio.volume * 100)
+        var icon = muted ? "󰝟" : (vol < 30 ? "󰕿" : (vol < 70 ? "󰖀" : "󰕾"))
+        root.osd.showOsd({ icon: icon, label: muted ? ("Звук: " + vol + "% (выкл)") : ("Громкость: " + vol + "%"), value: vol, muted: muted })
+    }
+
+    function showSourceOsd(mutedOverride) {
+        if (!root.osd || !root.sourceAudio) return
+        var muted = (mutedOverride !== undefined) ? mutedOverride : root.sourceAudio.muted
+        var vol = Math.round(root.sourceAudio.volume * 100)
+        var icon = muted ? "󰍭" : "󰍬"
+        root.osd.showOsd({ icon: icon, label: muted ? ("Микрофон: выкл") : ("Микрофон: " + vol + "%"), value: vol, muted: muted })
+    }
 
     PwObjectTracker {
         objects: [root.sink, root.source]
@@ -54,7 +71,9 @@ Item {
                 onClicked: (mouse) => {
                     if (mouse.button === Qt.RightButton || mouse.button === Qt.MiddleButton) {
                         if (root.sourceAudio) {
+                            var newMuted = !root.sourceAudio.muted
                             Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_SOURCE@", "toggle"])
+                            root.showSourceOsd(newMuted)
                         }
                         return
                     }
@@ -69,6 +88,7 @@ Item {
                     } else {
                         root.sourceAudio.volume = Math.max(0.0, root.sourceAudio.volume - step)
                     }
+                    root.showSourceOsd()
                 }
             }
         }
@@ -104,6 +124,7 @@ Item {
                 onClicked: (mouse) => {
                     if (mouse.button === Qt.RightButton || mouse.button === Qt.MiddleButton) {
                         if (root.sinkAudio) root.sinkAudio.muted = !root.sinkAudio.muted
+                        root.showSinkOsd()
                         return
                     }
                     if (root.popup) root.popup.visible = !root.popup.visible
@@ -117,6 +138,7 @@ Item {
                     } else {
                         root.sinkAudio.volume = Math.max(0.0, root.sinkAudio.volume - step)
                     }
+                    root.showSinkOsd()
                 }
             }
         }

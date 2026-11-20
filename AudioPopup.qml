@@ -23,6 +23,7 @@ PopupWindow {
 
     property var panelWindow: null
     property var anchorItem: null
+    property var osd: null
     property var sink: Pipewire.defaultAudioSink
     property var sinkAudio: sink ? sink.audio : null
     property var source: Pipewire.defaultAudioSource
@@ -649,6 +650,108 @@ PopupWindow {
                             }
                         }
                     }
+
+                Rectangle {
+                    width: parent.width
+                    radius: 14
+                    color: Theme.surface
+                    visible: BrightnessService.available || BrightnessService.ready
+                    implicitHeight: brightCol.implicitHeight + 20
+
+                    Column {
+                        id: brightCol
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 8
+
+                        Row {
+                            width: parent.width
+                            spacing: 8
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: BrightnessService.percent >= 67 ? "󰃠" : (BrightnessService.percent >= 34 ? "󰃟" : "󰃞")
+                                color: Theme.yellow
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 16
+                            }
+
+                            Column {
+                                width: parent.width - 60
+                                spacing: 2
+
+                                Text {
+                                    width: parent.width
+                                    text: "Яркость"
+                                    color: Theme.fg
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    text: BrightnessService.available ? (BrightnessService.device || "backlight") : "Не найдено устройство подсветки"
+                                    color: Theme.fgMuted
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 10
+                                }
+                            }
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: BrightnessService.available ? BrightnessService.percent + "%" : "--"
+                                color: Theme.fgMuted
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 12
+                            }
+                        }
+
+                        Item {
+                            width: parent.width
+                            height: 18
+                            visible: BrightnessService.available
+
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width
+                                height: 6
+                                radius: 3
+                                color: Theme.bg
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width * Math.max(0, Math.min(1, BrightnessService.percent / 100))
+                                    height: parent.height
+                                    radius: 3
+                                    color: Theme.yellow
+                                    Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -4
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                enabled: BrightnessService.available
+                                function updateFromX(x) {
+                                    var p = Math.round(Math.max(0, Math.min(1, x / width)) * 100)
+                                    BrightnessService.setPercent(p)
+                                    if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p })
+                                }
+                                onPressed: (mouse) => updateFromX(mouse.x)
+                                onPositionChanged: (mouse) => { if (pressed) updateFromX(mouse.x) }
+                                onWheel: (wheel) => {
+                                    var step = wheel.angleDelta.y > 0 ? 5 : -5
+                                    var p = Math.max(0, Math.min(100, BrightnessService.percent + step))
+                                    BrightnessService.setPercent(p)
+                                    if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p })
+                                }
+                            }
+                        }
+                    }
+                }
                 }
             }
         }

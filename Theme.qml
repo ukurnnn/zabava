@@ -64,6 +64,23 @@ Item {
     readonly property color teal:      color("teal")
     readonly property color sky:       color("sky")
 
+    Behavior on bg       { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on surface  { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on surface1 { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on overlay  { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on fg       { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on fgMuted  { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on accent   { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on accent2  { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on green    { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on yellow   { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on orange   { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on red      { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on mauve    { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on pink     { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on teal     { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on sky      { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+
     property string current: "matugen"
     readonly property var themeNames: ["matugen"]
     readonly property var themeLabels: ({ matugen: "Matugen" })
