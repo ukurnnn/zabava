@@ -19,6 +19,7 @@ LayoutModule 1.0 LayoutModule.qml
 PlayerPopup 1.0 PlayerPopup.qml
 CaffeineModule 1.0 CaffeineModule.qml
 WeatherModule 1.0 WeatherModule.qml
+WeatherPopup 1.0 WeatherPopup.qml
 CloseHandler 1.0 CloseHandler.qml
 AudioPopup 1.0 AudioPopup.qml
 NetworkPopup 1.0 NetworkPopup.qml
