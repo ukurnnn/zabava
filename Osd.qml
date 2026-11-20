@@ -48,8 +48,8 @@ PanelWindow {
         width: Math.max(240, content.implicitWidth + 32)
         height: content.implicitHeight + 20
         radius: 16
-        color: Theme.bg
-        border.color: Theme.surface1
+        color: Theme.glassPanelStrong
+        border.color: Theme.glassBorderStrong
         border.width: 1
         opacity: root.showing ? 1 : 0
         scale: root.showing ? 1 : 0.96
@@ -57,7 +57,21 @@ PanelWindow {
         Behavior on anchors.bottomMargin { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
         Behavior on opacity { NumberAnimation { duration: 180 } }
         Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: 180 } }
         Behavior on border.color { ColorAnimation { duration: 180 } }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 1
+            height: Math.max(0, parent.height * 0.5)
+            radius: Math.max(0, parent.radius - 1)
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Theme.glassHighlight }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
 
         ColumnLayout {
             id: content

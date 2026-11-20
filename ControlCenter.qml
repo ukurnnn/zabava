@@ -999,15 +999,29 @@ PanelWindow {
         width: Math.min(860, parent.width - 40)
         height: Math.min(640, parent.height - 40)
         radius: 20
-        color: Theme.bg
-        border.color: Theme.surface1
+        color: Theme.glassPanel
+        border.color: Theme.glassBorderStrong
         border.width: 1
         opacity: root.visible ? 1 : 0
         scale: root.visible ? 1 : 0.97
 
         Behavior on opacity { NumberAnimation { duration: 160 } }
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: 180 } }
         Behavior on border.color { ColorAnimation { duration: 180 } }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 1
+            height: Math.max(0, parent.height * 0.22)
+            radius: Math.max(0, parent.radius - 1)
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Theme.glassHighlight }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 

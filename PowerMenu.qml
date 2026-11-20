@@ -49,8 +49,8 @@ PanelWindow {
 
         width: 380
         radius: 16
-        color: Theme.bg
-        border.color: Theme.surface1
+        color: Theme.glassPanel
+        border.color: Theme.glassBorderStrong
         border.width: 1
         opacity: root.visible ? 1 : 0
 
@@ -61,7 +61,21 @@ PanelWindow {
             }
         }
         Behavior on opacity { NumberAnimation { duration: 180 } }
+        Behavior on color { ColorAnimation { duration: 180 } }
         Behavior on border.color { ColorAnimation { duration: 180 } }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 1
+            height: Math.max(0, parent.height * 0.18)
+            radius: Math.max(0, parent.radius - 1)
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Theme.glassHighlight }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 

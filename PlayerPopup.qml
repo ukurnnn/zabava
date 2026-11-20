@@ -217,8 +217,8 @@ PopupWindow {
         id: playerCard
         anchors.fill: parent
         radius: 24
-        color: Theme.bg
-        border.color: root.player && root.player.isPlaying ? Theme.accent : Theme.surface
+        color: Theme.glassPanel
+        border.color: root.player && root.player.isPlaying ? Theme.accent : Theme.glassBorderStrong
         border.width: 1
 
         opacity: root.visible ? 1 : 0
@@ -226,7 +226,22 @@ PopupWindow {
         transformOrigin: Item.Center
         Behavior on opacity { NumberAnimation { duration: 150 } }
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: 180 } }
         Behavior on border.color { ColorAnimation { duration: 200 } }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 1
+            height: Math.max(0, parent.height * 0.24)
+            radius: Math.max(0, parent.radius - 1)
+            z: 0
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Theme.glassHighlight }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
 
         Item {
             id: keyCatcher

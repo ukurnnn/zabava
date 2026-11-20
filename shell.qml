@@ -119,7 +119,9 @@ ShellRoot {
             anchors.topMargin: BarConfig.style === "full" ? 0 : 6
             height: BarConfig.style === "full" ? mainPanel.implicitHeight : 40
             radius: BarConfig.style === "full" ? 0 : 20
-            color: Theme.bg
+            color: Theme.glassPanel
+            border.color: Theme.glassBorder
+            border.width: BarConfig.style === "full" ? 0 : 1
             opacity: BarConfig.style !== "islands" ? 1 : 0
             visible: opacity > 0
             z: -1
@@ -133,6 +135,22 @@ ShellRoot {
             Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on radius { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.InOutQuad } }
+            Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 1
+                height: Math.max(0, parent.height * 0.45)
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style !== "full"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
         }
 
         Rectangle {
@@ -145,7 +163,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: wsRow.implicitWidth + (BarConfig.style === "full" ? 32 : 20)
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -154,7 +174,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             Row {
                 id: wsRow
@@ -202,7 +234,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: mprisContent.implicitWidth + 28 + (cavaRow.active ? cavaRow.implicitWidth + 10 : 0)
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -211,7 +245,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             Row {
                 anchors.centerIn: parent
@@ -241,7 +287,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: centerRow.implicitWidth + 24
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -250,7 +298,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             Column {
                 id: centerRow
@@ -331,7 +391,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: powerRow.implicitWidth + (BarConfig.style === "full" ? 32 : 20)
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -340,7 +402,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             PowerButton {
                 id: powerRow
@@ -359,7 +433,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: trayRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -368,7 +444,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             TrayModule {
                 id: trayRow
@@ -387,7 +475,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: netRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -396,7 +486,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             NetworkModule {
                 id: netRow
@@ -415,7 +517,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: layoutRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -424,7 +528,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             LayoutModule {
                 id: layoutRow
@@ -442,7 +558,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: sysRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -451,7 +569,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             SystemMonitorModule {
                 id: sysRow
@@ -469,7 +599,9 @@ ShellRoot {
             height: BarConfig.style === "full" ? 36 : 40
             width: volRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
-            color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
+            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -478,7 +610,19 @@ ShellRoot {
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 220 } }
+            Behavior on border.color { ColorAnimation { duration: 220 } }
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Math.max(0, parent.radius - 1)
+                visible: BarConfig.style === "islands"
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
 
             VolumeModule {
                 id: volRow

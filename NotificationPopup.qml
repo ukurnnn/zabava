@@ -44,8 +44,8 @@ PanelWindow {
                 width: 360
                 height: contentLayout.implicitHeight + 24
                 radius: 12
-                color: Theme.bg
-                border.color: modelData.urgency === 2 ? Theme.red : Theme.surface1
+                color: Theme.glassPanelStrong
+                border.color: modelData.urgency === 2 ? Theme.red : Theme.glassBorderStrong
                 border.width: modelData.urgency === 2 ? 2 : 1
 
                 opacity: 0
@@ -55,7 +55,21 @@ PanelWindow {
                 transform: Translate { x: slideOffset; Behavior on x { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } } }
                 Behavior on opacity { NumberAnimation { duration: 200 } }
                 Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+                Behavior on color { ColorAnimation { duration: 180 } }
                 Behavior on border.color { ColorAnimation { duration: 180 } }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 1
+                    height: Math.max(0, parent.height * 0.4)
+                    radius: Math.max(0, parent.radius - 1)
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                        GradientStop { position: 1.0; color: "transparent" }
+                    }
+                }
 
                 Timer {
                     interval: 8000
