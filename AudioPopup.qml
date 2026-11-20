@@ -666,6 +666,130 @@ PopupWindow {
                     }
 
                 }
+
+                Rectangle {
+                    width: parent.width
+                    radius: 14
+                    color: Theme.surface
+                    implicitHeight: appCol.implicitHeight + 20
+
+                    Column {
+                        id: appCol
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 8
+
+                        Text {
+                            text: "Приложения"
+                            color: Theme.fg
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
+
+                        Text {
+                            visible: root.streamNodes().length === 0
+                            text: "Нет активных потоков"
+                            color: Theme.fgMuted
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 11
+                        }
+
+                        Repeater {
+                            model: root.streamNodes()
+
+                            delegate: Column {
+                                required property var modelData
+                                width: appCol.width
+                                spacing: 4
+
+                                Row {
+                                    width: parent.width
+                                    spacing: 8
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: (modelData.audio && modelData.audio.muted) ? "󰝟" : "󰎈"
+                                        color: (modelData.audio && modelData.audio.muted) ? Theme.red : Theme.accent
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 14
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            anchors.margins: -6
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (modelData.audio) modelData.audio.muted = !modelData.audio.muted
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        width: parent.width - 70
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: root.streamLabel(modelData)
+                                        color: Theme.fg
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 11
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 40
+                                        horizontalAlignment: Text.AlignRight
+                                        text: modelData.audio ? Math.round(modelData.audio.volume * 100) + "%" : "--"
+                                        color: Theme.fgMuted
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 11
+                                    }
+                                }
+
+                                Item {
+                                    width: parent.width
+                                    height: 16
+
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: parent.width
+                                        height: 5
+                                        radius: 3
+                                        color: Theme.bg
+
+                                        Rectangle {
+                                            anchors.left: parent.left
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: parent.width * Math.max(0, Math.min(1.5, modelData.audio ? modelData.audio.volume : 0))
+                                            height: parent.height
+                                            radius: 3
+                                            color: (modelData.audio && modelData.audio.muted) ? Theme.fgMuted : Theme.accent2
+                                            Behavior on width { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        anchors.margins: -4
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onPressed: (mouse) => {
+                                            if (modelData.audio) modelData.audio.volume = Math.max(0, Math.min(1.5, mouse.x / width))
+                                        }
+                                        onPositionChanged: (mouse) => {
+                                            if (pressed && modelData.audio)
+                                                modelData.audio.volume = Math.max(0, Math.min(1.5, mouse.x / width))
+                                        }
+                                        onWheel: (wheel) => {
+                                            if (!modelData.audio) return
+                                            var step = 0.05
+                                            modelData.audio.volume = Math.max(0, Math.min(1.5, modelData.audio.volume + (wheel.angleDelta.y > 0 ? step : -step)))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -380,6 +380,32 @@ PanelWindow {
         }
         return out
     }
+    function streamNodes() {
+        var out = [], list = root.nodes || []
+        for (var i = 0; i < list.length; i++) {
+            var n = list[i]
+            if (!n || !n.audio || !n.isStream) continue
+            if (n.isSink || n.isSource) continue
+            var name = (n.name || "").toString().toLowerCase()
+            if (name.indexOf("monitor") !== -1) continue
+            out.push(n)
+        }
+        return out
+    }
+    function streamLabel(n) {
+        if (!n) return "Приложение"
+        try {
+            if (n.properties) {
+                var p = n.properties
+                var app = p["application.name"] || p["node.name"] || ""
+                var media = p["media.name"] || ""
+                if (app !== "" && media !== "" && app !== media) return app + " · " + media
+                if (app !== "") return app
+                if (media !== "") return media
+            }
+        } catch (e) {}
+        return n.description || n.nickname || n.name || "Приложение"
+    }
     function setDefaultSink(node) {
         if (!node) return
         try { if (Pipewire.preferredDefaultAudioSink !== undefined) { Pipewire.preferredDefaultAudioSink = node; return } } catch (e) {}
@@ -1193,6 +1219,100 @@ PanelWindow {
 
                     Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.surface }
 
+                    Row {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        component QuickTile: Rectangle {
+                            id: qt
+                            required property string icon
+                            required property string label
+                            required property bool active
+                            signal clicked()
+                            property bool hovered: qtMouse.containsMouse
+                            height: 34
+                            radius: 10
+                            color: active ? Theme.accent : (hovered ? Theme.surface1 : Theme.surface)
+                            border.color: active ? Theme.accent : Theme.surface1
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 140 } }
+                            Behavior on border.color { ColorAnimation { duration: 140 } }
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: qt.icon
+                                    color: qt.active ? Theme.bg : Theme.fg
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 13
+                                }
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: qt.label
+                                    color: qt.active ? Theme.bg : Theme.fg
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 10
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            MouseArea {
+                                id: qtMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: qt.clicked()
+                            }
+                        }
+
+                        QuickTile {
+                            width: (parent.width - 24) / 5
+                            icon: root.netWifiEnabled ? "󰖩" : "󰖪"
+                            label: root.netWifiEnabled ? "Wi-Fi" : "Wi-Fi"
+                            active: root.netWifiEnabled
+                            onClicked: root.toggleWifiRadio()
+                        }
+
+                        QuickTile {
+                            width: (parent.width - 24) / 5
+                            icon: NotificationService.dnd ? "󰂛" : "󰂚"
+                            label: "DND"
+                            active: NotificationService.dnd
+                            onClicked: NotificationService.toggleDnd()
+                        }
+
+                        QuickTile {
+                            width: (parent.width - 24) / 5
+                            icon: (root.caffeineModule && root.caffeineModule.isInhibited) ? "󰅶" : "󰾪"
+                            label: "Кофеин"
+                            active: root.caffeineModule ? root.caffeineModule.isInhibited : false
+                            onClicked: { if (root.caffeineModule) root.caffeineModule.toggle() }
+                        }
+
+                        QuickTile {
+                            width: (parent.width - 24) / 5
+                            icon: root.sourceAudio && root.sourceAudio.muted ? "󰍭" : "󰍬"
+                            label: "Микрофон"
+                            active: !(root.sourceAudio && root.sourceAudio.muted)
+                            onClicked: Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_SOURCE@", "toggle"])
+                        }
+
+                        QuickTile {
+                            width: (parent.width - 24) / 5
+                            icon: PowerProfileService.available ? PowerProfileService.iconFor(PowerProfileService.current) : "󰾅"
+                            label: PowerProfileService.available ? PowerProfileService.labelFor(PowerProfileService.current) : "Профиль"
+                            active: PowerProfileService.available && PowerProfileService.current === "performance"
+                            onClicked: {
+                                if (!PowerProfileService.available) return
+                                var ps = PowerProfileService.profiles && PowerProfileService.profiles.length > 0 ? PowerProfileService.profiles : ["power-saver", "balanced", "performance"]
+                                var idx = ps.indexOf(PowerProfileService.current)
+                                PowerProfileService.setProfile(ps[(idx + 1) % ps.length])
+                            }
+                        }
+                    }
+
                     Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -1618,6 +1738,104 @@ PanelWindow {
                                     }
                                 }
 
+                                Rectangle {
+                                    width: parent.width; radius: 12; color: Theme.surface
+                                    implicitHeight: appMixCol.implicitHeight + 20
+
+                                    Column {
+                                        id: appMixCol
+                                        anchors.fill: parent; anchors.margins: 10; spacing: 8
+
+                                        Text { text: "Приложения"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
+
+                                        Text {
+                                            visible: root.streamNodes().length === 0
+                                            text: "Нет активных потоков"
+                                            color: Theme.fgMuted
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 11
+                                        }
+
+                                        Repeater {
+                                            model: root.streamNodes()
+
+                                            delegate: Column {
+                                                required property var modelData
+                                                width: appMixCol.width
+                                                spacing: 4
+
+                                                Row {
+                                                    width: parent.width
+                                                    spacing: 8
+
+                                                    Text {
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        text: (modelData.audio && modelData.audio.muted) ? "󰝟" : "󰎈"
+                                                        color: (modelData.audio && modelData.audio.muted) ? Theme.red : Theme.accent
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 14
+                                                        MouseArea {
+                                                            anchors.fill: parent; anchors.margins: -6
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: { if (modelData.audio) modelData.audio.muted = !modelData.audio.muted }
+                                                        }
+                                                    }
+
+                                                    Text {
+                                                        width: parent.width - 70
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        text: root.streamLabel(modelData)
+                                                        color: Theme.fg
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 11
+                                                        elide: Text.ElideRight
+                                                    }
+
+                                                    Text {
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        width: 40
+                                                        horizontalAlignment: Text.AlignRight
+                                                        text: modelData.audio ? Math.round(modelData.audio.volume * 100) + "%" : "--"
+                                                        color: Theme.fgMuted
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 11
+                                                    }
+                                                }
+
+                                                Item {
+                                                    width: parent.width
+                                                    height: 16
+
+                                                    Rectangle {
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        width: parent.width; height: 5; radius: 3
+                                                        color: Theme.bg
+                                                        Rectangle {
+                                                            anchors.left: parent.left
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            width: parent.width * Math.max(0, Math.min(1.5, modelData.audio ? modelData.audio.volume : 0))
+                                                            height: parent.height; radius: 3
+                                                            color: (modelData.audio && modelData.audio.muted) ? Theme.fgMuted : Theme.accent2
+                                                            Behavior on width { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                                                        }
+                                                    }
+
+                                                    MouseArea {
+                                                        anchors.fill: parent; anchors.margins: -4
+                                                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                        onPressed: (mouse) => { if (modelData.audio) modelData.audio.volume = Math.max(0, Math.min(1.5, mouse.x / width)) }
+                                                        onPositionChanged: (mouse) => { if (pressed && modelData.audio) modelData.audio.volume = Math.max(0, Math.min(1.5, mouse.x / width)) }
+                                                        onWheel: (wheel) => {
+                                                            if (!modelData.audio) return
+                                                            var step = 0.05
+                                                            modelData.audio.volume = Math.max(0, Math.min(1.5, modelData.audio.volume + (wheel.angleDelta.y > 0 ? step : -step)))
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
 
                                 Rectangle {
                                     width: parent.width; height: 36; radius: 10
@@ -2618,6 +2836,48 @@ PanelWindow {
                                                     color: Theme.fg
                                                     font.family: "JetBrainsMono Nerd Font"
                                                     font.pixelSize: 10
+                                                }
+                                            }
+
+                                            Row {
+                                                width: parent.width
+                                                spacing: 8
+
+                                                Repeater {
+                                                    model: [
+                                                        { id: "light", label: "Лёгкое" },
+                                                        { id: "balanced", label: "Сбаланс." },
+                                                        { id: "strong", label: "Яркое" }
+                                                    ]
+
+                                                    delegate: Rectangle {
+                                                        required property var modelData
+                                                        width: (glassTuneCol.width - 16) / 3
+                                                        height: 28
+                                                        radius: 8
+                                                        property bool active: Theme.glassPreset === modelData.id
+                                                        color: active ? Theme.accent : (gpMouse.containsMouse ? Theme.surface1 : Theme.bg)
+                                                        border.color: active ? Theme.accent : Theme.surface1
+                                                        border.width: 1
+                                                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                                                        Text {
+                                                            anchors.centerIn: parent
+                                                            text: modelData.label
+                                                            color: active ? Theme.bg : Theme.fg
+                                                            font.family: "JetBrainsMono Nerd Font"
+                                                            font.pixelSize: 10
+                                                            font.bold: active
+                                                        }
+
+                                                        MouseArea {
+                                                            id: gpMouse
+                                                            anchors.fill: parent
+                                                            hoverEnabled: true
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: Theme.applyGlassPreset(modelData.id)
+                                                        }
+                                                    }
                                                 }
                                             }
 

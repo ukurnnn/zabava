@@ -67,6 +67,7 @@ Item {
     property real glassBorderStrength: 1.1
     property bool glassBlur: false
     property bool sheenEnabled: true
+    property string glassPreset: "balanced"
 
     property color mediaAccent: accent
     property bool mediaAccentActive: false
@@ -96,6 +97,7 @@ Item {
                 if (obj && obj.glassBorderStrength !== undefined) root.glassBorderStrength = clampValue(obj.glassBorderStrength, 0.0, 2.0)
                 if (obj && obj.glassBlur !== undefined) root.glassBlur = obj.glassBlur === true
                 if (obj && obj.sheenEnabled !== undefined) root.sheenEnabled = obj.sheenEnabled === true
+                if (obj && obj.glassPreset !== undefined) root.glassPreset = String(obj.glassPreset)
             } catch (e) {
             }
         }
@@ -116,7 +118,8 @@ Item {
             glassHighlightStrength: root.glassHighlightStrength,
             glassBorderStrength: root.glassBorderStrength,
             glassBlur: root.glassBlur,
-            sheenEnabled: root.sheenEnabled
+            sheenEnabled: root.sheenEnabled,
+            glassPreset: root.glassPreset
         }
     }
 
@@ -134,12 +137,25 @@ Item {
         saveUiStyle()
     }
 
-    function setGlassOpacity(v) { root.glassOpacity = clampValue(v, 0.5, 1.6); saveUiStyle() }
-    function setGlassTint(v) { root.glassTint = clampValue(v, 0.4, 1.8); saveUiStyle() }
-    function setGlassHighlightStrength(v) { root.glassHighlightStrength = clampValue(v, 0.0, 2.0); saveUiStyle() }
-    function setGlassBorderStrength(v) { root.glassBorderStrength = clampValue(v, 0.0, 2.0); saveUiStyle() }
+    function setGlassOpacity(v) { root.glassOpacity = clampValue(v, 0.5, 1.6); root.glassPreset = ""; saveUiStyle() }
+    function setGlassTint(v) { root.glassTint = clampValue(v, 0.4, 1.8); root.glassPreset = ""; saveUiStyle() }
+    function setGlassHighlightStrength(v) { root.glassHighlightStrength = clampValue(v, 0.0, 2.0); root.glassPreset = ""; saveUiStyle() }
+    function setGlassBorderStrength(v) { root.glassBorderStrength = clampValue(v, 0.0, 2.0); root.glassPreset = ""; saveUiStyle() }
     function setGlassBlur(v) { root.glassBlur = v === true; saveUiStyle() }
     function setSheenEnabled(v) { root.sheenEnabled = v === true; saveUiStyle() }
+
+    function applyGlassPreset(id) {
+        var p = { opacity: 1.0, tint: 1.2, highlight: 1.3, border: 1.1 }
+        if (id === "light") p = { opacity: 0.75, tint: 0.7, highlight: 0.55, border: 0.6 }
+        else if (id === "strong") p = { opacity: 1.3, tint: 1.55, highlight: 1.8, border: 1.4 }
+        else id = "balanced"
+        root.glassOpacity = clampValue(p.opacity, 0.5, 1.6)
+        root.glassTint = clampValue(p.tint, 0.4, 1.8)
+        root.glassHighlightStrength = clampValue(p.highlight, 0.0, 2.0)
+        root.glassBorderStrength = clampValue(p.border, 0.0, 2.0)
+        root.glassPreset = id
+        saveUiStyle()
+    }
 
     function mix(a, b, t) {
         t = Math.max(0, Math.min(1, t))
