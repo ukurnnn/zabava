@@ -27,9 +27,8 @@ PanelWindow {
     property var displayItems: []
     property string searchText: ""
     property int maxSearchResults: 12
-    property string mode: "apps" // apps, command, calc, web, clipboard, windows, emoji, stats, actions
+    property string mode: "apps" // apps, command, calc
     property string modeHint: ""
-    property var pendingAppForActions: null
 
     // usageTimestamps: { appId: [unix_ts, unix_ts, ...] }
     property var usageTimestamps: ({})
@@ -39,26 +38,6 @@ PanelWindow {
     property var blacklist: [
         "avahi", "bssh", "bvnc", "qv4l2", "qvidcap",
         "kdeconnect", "xterm", "uxterm", "htop"
-    ]
-
-    property var emojiList: [
-        { ch: "😀", name: "grinning smile happy" }, { ch: "😁", name: "beaming smile" }, { ch: "😂", name: "joy tears laugh" },
-        { ch: "🤣", name: "rofl laugh" }, { ch: "😊", name: "blush smile" }, { ch: "😍", name: "heart eyes love" },
-        { ch: "😎", name: "sunglasses cool" }, { ch: "🤔", name: "thinking hmm" }, { ch: "😴", name: "sleep tired" },
-        { ch: "😭", name: "cry sad" }, { ch: "😡", name: "angry" }, { ch: "👍", name: "thumbs up yes ok" },
-        { ch: "👎", name: "thumbs down no" }, { ch: "👏", name: "clap" }, { ch: "🙏", name: "pray thanks" },
-        { ch: "🔥", name: "fire hot" }, { ch: "⭐", name: "star" }, { ch: "✨", name: "sparkles" },
-        { ch: "❤️", name: "heart red love" }, { ch: "💔", name: "broken heart" }, { ch: "✅", name: "check ok done" },
-        { ch: "❌", name: "cross no" }, { ch: "⚠️", name: "warning" }, { ch: "🎉", name: "party tada" },
-        { ch: "🚀", name: "rocket launch" }, { ch: "💡", name: "idea bulb" }, { ch: "📌", name: "pin" },
-        { ch: "📎", name: "paperclip" }, { ch: "📝", name: "note memo" }, { ch: "📁", name: "folder" },
-        { ch: "📷", name: "camera photo" }, { ch: "🎵", name: "music note" }, { ch: "🎮", name: "game controller" },
-        { ch: "🐧", name: "linux tux penguin" }, { ch: "☕", name: "coffee" }, { ch: "🍕", name: "pizza" },
-        { ch: "🙂", name: "slight smile" }, { ch: "😉", name: "wink" }, { ch: "😅", name: "sweat smile" },
-        { ch: "🥳", name: "party face" }, { ch: "🤖", name: "robot" }, { ch: "👀", name: "eyes look" },
-        { ch: "💻", name: "laptop computer" }, { ch: "🖥️", name: "desktop computer" }, { ch: "⌨️", name: "keyboard" },
-        { ch: "🖱️", name: "mouse" }, { ch: "🔒", name: "lock" }, { ch: "🔓", name: "unlock" },
-        { ch: "⚙️", name: "gear settings" }, { ch: "🧪", name: "test lab" }, { ch: "🐛", name: "bug debug" }
     ]
 
     Component.onCompleted: { loadUsage() }
@@ -116,6 +95,20 @@ PanelWindow {
         return score
     }
 
+    function recordLaunch(appId) {
+        var id = appId || ""
+        if (id === "") return
+        var now = Math.floor(Date.now() / 1000)
+        var cutoff = now - 90 * 86400
+        var newTimestamps = Object.assign({}, usageTimestamps)
+        var stamps = (newTimestamps[id] || []).slice()
+        stamps = stamps.filter(function(ts) { return ts >= cutoff })
+        stamps.push(now)
+        newTimestamps[id] = stamps
+        usageTimestamps = newTimestamps
+        saveUsage()
+    }
+
     IpcHandler {
         target: "launcher"
         function toggle(): void { launcher.visible = !launcher.visible }
@@ -148,7 +141,7 @@ PanelWindow {
         })
 
         allApps = apps
-        if (launcher.visible || launcher.mode === "apps" || launcher.mode === "actions")
+        if (launcher.visible || launcher.mode === "apps")
             launcher.filterApps(launcher.searchText || "")
     }
 
@@ -242,60 +235,22 @@ PanelWindow {
         return out
     }
 
-    function usageStats() {
-        var ids = Object.keys(usageTimestamps || {})
-        var now = Math.floor(Date.now() / 1000)
-        var cutoff = now - 90 * 86400
-        var rows = []
-        for (var i = 0; i < ids.length; i++) {
-            var id = ids[i]
-            var stamps = (usageTimestamps[id] || []).filter(function(ts) { return ts >= cutoff })
-            if (stamps.length === 0) continue
-            var name = id
-            for (var a = 0; a < allApps.length; a++) {
-                if (allApps[a].id === id) { name = allApps[a].name || id; break }
-            }
-            rows.push({ id: id, name: name, count: stamps.length, score: frecencyScore(id) })
-        }
-        rows.sort(function(a, b) { if (b.score !== a.score) return b.score - a.score; return b.count - a.count })
-        return rows
-    }
-
-    function resetUsageStats() {
-        usageTimestamps = ({})
-        saveUsage()
-        filterApps(searchField.text)
-    }
-
     function shellQuote(s) { s = String(s === undefined || s === null ? "" : s); return "'" + s.replace(/'/g, "'\\''") + "'" }
 
     function filterApps(raw) {
         var query = raw || ""
         searchText = query
         var t = query
-        var tl = t.trim()
-
-        // Stats/frecency view
-        if (tl === ":stats" || tl === "stats:" || tl === ":usage") {
-            mode = "stats"; modeHint = "Статистика запусков"
-            var rows = usageStats()
-            var items = [{ type: "action", icon: "󰑓", title: "Сбросить статистику запусков", subtitle: "Очистить usage.json (только лаунчер)", action: "reset-usage" }]
-            for (var i = 0; i < rows.length && items.length < maxSearchResults; i++) {
-                var r = rows[i]
-                items.push({ type: "info", icon: "󰄬", title: r.name, subtitle: "Запусков: " + r.count + " · frecency: " + r.score })
-            }
-            if (rows.length === 0) items.push({ type: "info", icon: "󰋼", title: "Пока нет статистики", subtitle: "Запускайте приложения через лаунчер" })
-            displayItems = items; resultsList.currentIndex = 0; return
-        }
 
         // Command execution
         if (t.startsWith(">")) {
             mode = "command"; modeHint = "Команда"
             var cmd = t.substring(1).trim()
             displayItems = cmd.length === 0
-                ? [{ type: "info", icon: "󰆍", title: "Введите команду после >", subtitle: "Enter — выполнить (bash -lc)" }]
+                ? [{ type: "info", icon: "󰆍", title: "Введите команду после >", subtitle: "Enter — выполнить" }]
                 : [{ type: "command", icon: "󰆍", title: "Выполнить: " + cmd, subtitle: "bash -lc · Enter для запуска", cmd: cmd }]
-            resultsList.currentIndex = 0; return
+            resultsList.currentIndex = 0
+            return
         }
 
         // Calculator
@@ -318,136 +273,14 @@ PanelWindow {
                     "    print('__ERR__')\n"]
                 calcProc.running = true
             }
-            resultsList.currentIndex = 0; return
+            resultsList.currentIndex = 0
+            return
         }
 
-        // Web search
-        if (t.startsWith("?")) {
-            mode = "web"; modeHint = "Веб-поиск"
-            var qweb = t.substring(1).trim()
-            displayItems = qweb.length === 0
-                ? [{ type: "info", icon: "󰖟", title: "Введите запрос после ?", subtitle: "Enter — открыть в браузере (DuckDuckGo)" }]
-                : [{ type: "web", icon: "󰖟", title: "Искать: " + qweb, subtitle: "DuckDuckGo · Enter открыть", query: qweb }]
-            resultsList.currentIndex = 0; return
-        }
-
-        // Windows (Niri)
-        if (t.startsWith(":w") || t.startsWith("win:")) {
-            mode = "windows"; modeHint = "Окна (Niri)"
-            var wq = t.replace(/^(:w(?:in(?:dows?)?)?|win:)\s*/i, "")
-            displayItems = [{ type: "info", icon: "󱂬", title: "Загрузка окон...", subtitle: "" }]
-            windowsProc.query = norm(wq)
-            windowsProc.command = ["bash", "-lc", "niri msg -j windows 2>/dev/null || echo '[]'"]
-            windowsProc.running = true
-            resultsList.currentIndex = 0; return
-        }
-
-        // Clipboard (cliphist)
-        if (t.startsWith(":c") || t.startsWith(":clip") || t.startsWith("clip:") || t.startsWith(":b")) {
-            mode = "clipboard"; modeHint = "Буфер обмена"
-            var cq = t.replace(/^(:c(?:lip(?:board)?)?|clip:|:b)\s*/i, "")
-            displayItems = [{ type: "info", icon: "󰅇", title: "Загрузка буфера...", subtitle: "" }]
-            clipProc.query = norm(cq)
-            clipProc.command = ["bash", "-lc", "command -v cliphist >/dev/null 2>&1 && cliphist list | head -60 || true"]
-            clipProc.running = true
-            resultsList.currentIndex = 0; return
-        }
-
-        // Emoji
-        if (t.startsWith(":e") || t.startsWith(":emoji") || t.startsWith("emoji:")) {
-            mode = "emoji"; modeHint = "Эмодзи"
-            var eq = norm(t.replace(/^(:e(?:moji)?|emoji:)\s*/i, ""))
-            var eitems = []
-            for (var ei = 0; ei < emojiList.length; ei++) {
-                var em = emojiList[ei]
-                if (eq === "" || norm(em.name).indexOf(eq) !== -1 || em.ch.indexOf(eq) !== -1) {
-                    eitems.push({ type: "emoji", icon: em.ch, title: em.ch + "  " + em.name.split(" ").slice(0,3).join(" "), subtitle: "Enter — скопировать", ch: em.ch })
-                }
-                if (eitems.length >= maxSearchResults) break
-            }
-            if (eitems.length === 0) eitems.push({ type: "info", icon: "󰞅", title: "Ничего не найдено", subtitle: "" })
-            displayItems = eitems; resultsList.currentIndex = 0; return
-        }
-
-        // App actions mode
-        if (pendingAppForActions) {
-            mode = "actions"; modeHint = "Действия: " + (pendingAppForActions.name || "")
-            var acts = getAppActions(pendingAppForActions)
-            var aq = norm(t)
-            var aitems = [
-                { type: "action", icon: "󰁍", title: "Назад к приложениям", subtitle: "Esc или Enter", action: "back-apps" },
-                { type: "app", icon: pendingAppForActions.icon || "", title: "Запустить: " + (pendingAppForActions.name || ""), subtitle: pendingAppForActions.genericName || "", app: pendingAppForActions }
-            ]
-            for (var ai = 0; ai < acts.length; ai++) {
-                var act = acts[ai]
-                if (aq !== "" && norm(act.name).indexOf(aq) === -1) continue
-                aitems.push({ type: "app-action", icon: pendingAppForActions.icon || "", title: act.name || "Action", subtitle: pendingAppForActions.name || "", app: pendingAppForActions, appAction: act })
-            }
-            if (aitems.length === 2 && acts.length === 0)
-                aitems.push({ type: "info", icon: "󰋼", title: "Нет дополнительных действий", subtitle: ".desktop actions не найдены для этого приложения" })
-            displayItems = aitems; resultsList.currentIndex = 0; return
-        }
-
-        // Default: apps (preserve existing behavior)
+        // Default: apps
         mode = "apps"; modeHint = ""
         displayItems = appResults(query)
         resultsList.currentIndex = 0
-    }
-
-    function getAppActions(app) {
-        var out = []
-        if (!app) return out
-        try {
-            var acts = app.actions
-            if (!acts) return out
-            if (acts.length !== undefined) {
-                for (var i = 0; i < acts.length; i++) {
-                    var a = acts[i]
-                    if (!a) continue
-                    out.push({ name: a.name || a.text || a.id || ("Action " + (i + 1)), ref: a, index: i })
-                }
-            } else if (acts.values !== undefined) {
-                var v = acts.values
-                for (var j = 0; j < v.length; j++) {
-                    var av = v[j]
-                    if (!av) continue
-                    out.push({ name: av.name || av.text || av.id || ("Action " + (j + 1)), ref: av, index: j })
-                }
-            }
-        } catch (e) {}
-        return out
-    }
-
-    function executeAppAction(app, act) {
-        try {
-            if (act && act.ref) {
-                if (typeof act.ref.execute === "function") { act.ref.execute(); launcher.visible = false; return }
-                if (typeof act.ref.trigger === "function") { act.ref.trigger(); launcher.visible = false; return }
-                if (typeof act.ref.activate === "function") { act.ref.activate(); launcher.visible = false; return }
-            }
-            if (app && typeof app.executeAction === "function") {
-                app.executeAction(act.index !== undefined ? act.index : (act.ref || act))
-                launcher.visible = false
-                return
-            }
-            if (app && typeof app.execute === "function" && act && act.ref && act.ref.id) {
-                try { app.execute(act.ref.id); launcher.visible = false; return } catch (e2) {}
-            }
-        } catch (e) {}
-    }
-
-    function recordLaunch(appId) {
-        var id = appId || ""
-        if (id === "") return
-        var now = Math.floor(Date.now() / 1000)
-        var cutoff = now - 90 * 86400
-        var newTimestamps = Object.assign({}, usageTimestamps)
-        var stamps = (newTimestamps[id] || []).slice()
-        stamps = stamps.filter(function(ts) { return ts >= cutoff })
-        stamps.push(now)
-        newTimestamps[id] = stamps
-        usageTimestamps = newTimestamps
-        saveUsage()
     }
 
     function launchItem(item) {
@@ -456,13 +289,6 @@ PanelWindow {
             recordLaunch(item.app.id || "")
             try { item.app.execute() } catch (e) {}
             launcher.visible = false
-            pendingAppForActions = null
-            return
-        }
-        if (item.type === "app-action") {
-            recordLaunch(item.app ? (item.app.id || "") : "")
-            executeAppAction(item.app, item.appAction)
-            pendingAppForActions = null
             return
         }
         if (item.type === "command") {
@@ -477,45 +303,6 @@ PanelWindow {
             }
             launcher.visible = false
             return
-        }
-        if (item.type === "web") {
-            var url = "https://duckduckgo.com/?q=" + encodeURIComponent(item.query || "")
-            Quickshell.execDetached(["xdg-open", url])
-            launcher.visible = false
-            return
-        }
-        if (item.type === "clipboard") {
-            copyProc.command = ["bash", "-lc", "cliphist decode " + shellQuote(item.id) + " | wl-copy 2>/dev/null || true"]
-            copyProc.running = true
-            launcher.visible = false
-            return
-        }
-        if (item.type === "window") {
-            if (item.winId !== undefined && item.winId !== null)
-                Quickshell.execDetached(["niri", "msg", "action", "focus-window", "--id", String(item.winId)])
-            launcher.visible = false
-            return
-        }
-        if (item.type === "emoji") {
-            copyProc.command = ["bash", "-lc", "printf '%s' " + shellQuote(item.ch) + " | wl-copy 2>/dev/null || true"]
-            copyProc.running = true
-            launcher.visible = false
-            return
-        }
-        if (item.type === "action") {
-            if (item.action === "reset-usage") { resetUsageStats(); return }
-            if (item.action === "back-apps") { pendingAppForActions = null; searchField.text = ""; filterApps(""); return }
-        }
-    }
-
-    function openActionsForSelected() {
-        var idx = resultsList.currentIndex
-        if (idx < 0 || idx >= displayItems.length) return
-        var item = displayItems[idx]
-        if (item && item.type === "app" && item.app) {
-            pendingAppForActions = item.app
-            searchField.text = ""
-            filterApps("")
         }
     }
 
@@ -533,67 +320,6 @@ PanelWindow {
                 } else {
                     launcher.displayItems = [{ type: "calc", icon: "󰃬", title: "= " + val, subtitle: calcProc.expr + "  (Enter — скопировать)", expr: calcProc.expr, value: val }]
                 }
-                resultsList.currentIndex = 0
-            }
-        }
-    }
-
-    Process {
-        id: clipProc
-        property string query: ""
-        command: ["bash", "-c", "true"]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                if (launcher.mode !== "clipboard") return
-                var lines = (this.text || "").split("\n")
-                var items = []
-                var q = clipProc.query || ""
-                for (var i = 0; i < lines.length; i++) {
-                    var line = lines[i]
-                    if (!line || line.trim() === "") continue
-                    var tabIdx = line.indexOf("\t")
-                    if (tabIdx === -1) continue
-                    var id = line.substring(0, tabIdx)
-                    var preview = line.substring(tabIdx + 1).replace(/\s+/g, " ").trim()
-                    if (q !== "" && launcher.norm(preview).indexOf(q) === -1) continue
-                    items.push({ type: "clipboard", icon: "󰅇", title: preview.substring(0, 120), subtitle: "cliphist #" + id, id: id })
-                    if (items.length >= launcher.maxSearchResults) break
-                }
-                if (items.length === 0) items.push({ type: "info", icon: "󰅇", title: q !== "" ? "Ничего не найдено" : "Буфер пуст или cliphist недоступен", subtitle: "Нужны cliphist и wl-clipboard" })
-                launcher.displayItems = items
-                resultsList.currentIndex = 0
-            }
-        }
-    }
-
-    Process {
-        id: windowsProc
-        property string query: ""
-        command: ["bash", "-c", "true"]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                if (launcher.mode !== "windows") return
-                var items = []
-                try {
-                    var arr = JSON.parse(this.text || "[]")
-                    var q = windowsProc.query || ""
-                    for (var i = 0; i < arr.length; i++) {
-                        var w = arr[i] || {}
-                        var title = w.title || "(без названия)"
-                        var appId = w.app_id || w.appId || ""
-                        var label = (appId ? appId + " — " : "") + title
-                        if (q !== "" && launcher.norm(label).indexOf(q) === -1) continue
-                        var ws = (w.workspace_id !== undefined) ? ("ws " + w.workspace_id) : ""
-                        items.push({ type: "window", icon: "󱂬", title: label.substring(0, 120), subtitle: (w.is_focused ? "focused" : "") + (ws ? ((w.is_focused ? " · " : "") + ws) : ""), winId: w.id })
-                        if (items.length >= launcher.maxSearchResults) break
-                    }
-                } catch (e) {
-                    items = [{ type: "info", icon: "󱂬", title: "Не удалось получить окна", subtitle: "niri msg -j windows недоступен" }]
-                }
-                if (items.length === 0) items.push({ type: "info", icon: "󱂬", title: "Окна не найдены", subtitle: "" })
-                launcher.displayItems = items
                 resultsList.currentIndex = 0
             }
         }
@@ -647,7 +373,7 @@ PanelWindow {
                         anchors.fill: parent
                         anchors.leftMargin: 12
                         anchors.rightMargin: 12
-                        placeholderText: "Поиск…  (> команда, = кальк, ? web, :w окна, :c буфер, :e emoji, :stats)"
+                        placeholderText: "Поиск…  (> команда, = калькулятор)"
                         placeholderTextColor: Theme.fgMuted
                         color: Theme.fg
                         font.family: "JetBrainsMono Nerd Font"
@@ -671,27 +397,16 @@ PanelWindow {
                                     launcher.launchItem(launcher.displayItems[resultsList.currentIndex])
                                 event.accepted = true
                             } else if (event.key === Qt.Key_Escape) {
-                                if (launcher.pendingAppForActions) {
-                                    launcher.pendingAppForActions = null
-                                    launcher.filterApps(searchField.text)
-                                } else {
-                                    launcher.visible = false
-                                }
+                                launcher.visible = false
                                 event.accepted = true
-                            } else if (event.key === Qt.Key_Tab) {
-                                launcher.openActionsForSelected(); event.accepted = true
                             }
                         }
                     }
                 }
 
                 Text {
-                    visible: launcher.mode !== "apps" || launcher.modeHint !== ""
-                    text: {
-                        if (launcher.mode === "actions") return "Действия: " + (launcher.pendingAppForActions ? launcher.pendingAppForActions.name : "") + "  ·  Esc — назад"
-                        if (launcher.mode === "apps") return "Tab/ПКМ — действия приложения  ·  :stats — статистика"
-                        return "Режим: " + launcher.modeHint
-                    }
+                    visible: launcher.mode !== "apps"
+                    text: launcher.mode === "command" ? "Режим: команда" : "Режим: калькулятор"
                     color: Theme.fgMuted
                     font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 10
@@ -718,9 +433,7 @@ PanelWindow {
 
                         property bool isApp: modelData.type === "app" && modelData.app
                         property string iconSource: (isApp && modelData.app.icon) ? Quickshell.iconPath(modelData.app.icon) : ""
-                        property bool hasActions: isApp && launcher.getAppActions(modelData.app).length > 0
                         property string glyph: {
-                            if (modelData.type === "emoji") return modelData.ch || ""
                             if (!isApp && modelData.icon) return modelData.icon
                             if (isApp) return "󰣆"
                             return "󰘔"
@@ -743,7 +456,7 @@ PanelWindow {
                                     text: glyph
                                     color: index === resultsList.currentIndex ? Theme.bg : Theme.fg
                                     font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: modelData.type === "emoji" ? 18 : 15
+                                    font.pixelSize: 15
                                 }
                             }
 
@@ -772,14 +485,6 @@ PanelWindow {
                                     elide: Text.ElideRight
                                 }
                             }
-
-                            Text {
-                                visible: hasActions && launcher.mode === "apps"
-                                text: "󰅂"
-                                color: index === resultsList.currentIndex ? Theme.bg : Theme.fgMuted
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 12
-                            }
                         }
 
                         MouseArea {
@@ -787,16 +492,7 @@ PanelWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            onClicked: (mouse) => {
-                                if (mouse.button === Qt.RightButton && isApp) {
-                                    launcher.pendingAppForActions = modelData.app
-                                    searchField.text = ""
-                                    launcher.filterApps("")
-                                } else {
-                                    launcher.launchItem(modelData)
-                                }
-                            }
+                            onClicked: launcher.launchItem(modelData)
                         }
                     }
                 }
@@ -806,7 +502,6 @@ PanelWindow {
 
     onVisibleChanged: {
         if (visible) {
-            pendingAppForActions = null
             mode = "apps"
             modeHint = ""
             searchField.text = ""
@@ -815,7 +510,6 @@ PanelWindow {
             searchField.forceActiveFocus()
             loadUsage()
         } else {
-            pendingAppForActions = null
             mode = "apps"
             modeHint = ""
         }
