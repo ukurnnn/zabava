@@ -235,8 +235,8 @@ ShellRoot {
             width: mprisContent.implicitWidth + 28 + (cavaRow.active ? cavaRow.implicitWidth + 10 : 0)
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
-            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
-            border.width: BarConfig.style === "islands" ? 1 : 0
+            border.color: BarConfig.style === "islands" ? (Theme.mediaAccentActive ? Qt.rgba(Theme.mediaAccent.r, Theme.mediaAccent.g, Theme.mediaAccent.b, 0.55) : Theme.glassBorder) : "transparent"
+            border.width: BarConfig.style === "islands" ? (Theme.mediaAccentActive ? 1.5 : 1) : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -254,7 +254,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlight }
+                    GradientStop { position: 0.0; color: Theme.mediaAccentActive ? Qt.rgba(Theme.mediaAccent.r, Theme.mediaAccent.g, Theme.mediaAccent.b, Math.min(0.5, Theme.glassHighlight.a + 0.12)) : Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -271,7 +271,6 @@ ShellRoot {
                 CavaModule {
                     id: cavaRow
                     anchors.verticalCenter: parent.verticalCenter
-                    // cava работает только когда трек реально играет
                     active: mprisContent.player !== null && mprisContent.player.isPlaying === true
                 }
             }
@@ -288,7 +287,7 @@ ShellRoot {
             width: centerRow.implicitWidth + 24
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.glassIsland : "transparent"
-            border.color: BarConfig.style === "islands" ? Theme.glassBorder : "transparent"
+            border.color: BarConfig.style === "islands" ? (Theme.mediaAccentActive ? Qt.rgba(Theme.mediaAccent.r, Theme.mediaAccent.g, Theme.mediaAccent.b, 0.45) : Theme.glassBorder) : "transparent"
             border.width: BarConfig.style === "islands" ? 1 : 0
             Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -307,7 +306,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlight }
+                    GradientStop { position: 0.0; color: Theme.mediaAccentActive ? Qt.rgba(Theme.mediaAccent.r, Theme.mediaAccent.g, Theme.mediaAccent.b, Math.min(0.45, Theme.glassHighlight.a + 0.08)) : Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }

@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Mpris
 
 Item {
@@ -14,6 +15,7 @@ Item {
     property string albumArt: ""
     property real position: 0
     property real length: 0
+    property string mediaAccentHex: ""
     readonly property real progress: (length > 0 && position >= 0) ? Math.max(0, Math.min(1, position / length)) : 0
     readonly property bool playing: player ? player.isPlaying : false
     readonly property bool hasTrack: trackText !== "" || artistText !== ""
@@ -29,6 +31,24 @@ Item {
     }
 
     Component.onCompleted: updatePlayer()
+
+    function artFilePath(url) {
+        if (!url) return ""
+        var p = url.toString()
+        if (p.indexOf("file://") === 0) p = p.substring(7)
+        try { p = decodeURIComponent(p) } catch (e) {}
+        return p
+    }
+
+    function updateMediaAccentState() {
+        if (root.playing && root.mediaAccentHex !== "") {
+            Theme.mediaAccent = root.mediaAccentHex
+            Theme.mediaAccentActive = true
+        } else {
+            Theme.mediaAccentActive = false
+            Theme.mediaAccent = Theme.accent
+        }
+    }
 
     function updatePlayer() {
         var players = Mpris.players ? Mpris.players.values : []
@@ -61,6 +81,8 @@ Item {
             root.albumArt = ""
             root.position = 0
             root.length = 0
+            root.mediaAccentHex = ""
+            updateMediaAccentState()
             return
         }
 
@@ -77,7 +99,23 @@ Item {
         root.albumArt = chosen.trackArtUrl || ""
         root.length = chosen.length || 0
         root.position = chosen.position || 0
+        updateMediaAccentState()
     }
+
+
+    onAlbumArtChanged: {
+        var p = artFilePath(root.albumArt)
+        if (p !== "" && p.indexOf("/") !== -1) {
+            artColorProc.path = p
+            artColorProc.command = ["python3", "-c", "import colorsys,sys;from PIL import Image;im=Image.open(sys.argv[1]).convert('RGB').resize((24,24));px=list(im.getdata());n=len(px);r=sum(p[0] for p in px)/n;g=sum(p[1] for p in px)/n;b=sum(p[2] for p in px)/n;h,l,s=colorsys.rgb_to_hls(r/255,g/255,b/255);s=min(1,max(0.35,s*1.35));l=max(0.35,min(0.62,l));rr,gg,bb=colorsys.hls_to_rgb(h,l,s);print('#%02x%02x%02x'%(int(rr*255),int(gg*255),int(bb*255)))", p]
+            artColorProc.running = true
+        } else {
+            root.mediaAccentHex = ""
+            updateMediaAccentState()
+        }
+    }
+
+    onPlayingChanged: updateMediaAccentState()
 
     Connections {
         target: Mpris.players
@@ -110,6 +148,21 @@ Item {
 
     Timer { id: retryTimer; interval: 350; repeat: false; onTriggered: root.updatePlayer() }
     Timer { id: retryTimer2; interval: 900; repeat: false; onTriggered: root.updatePlayer() }
+
+    Process {
+        id: artColorProc
+        property string path: ""
+        command: ["bash", "-c", "true"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var c = (this.text || "").trim()
+                if (/^#[0-9a-fA-F]{6}$/.test(c)) root.mediaAccentHex = c
+                else root.mediaAccentHex = ""
+                root.updateMediaAccentState()
+            }
+        }
+    }
 
     Row {
         id: contentRow

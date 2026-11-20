@@ -26,7 +26,7 @@ PanelWindow {
     property var allApps: []
     property var displayItems: []
     property string searchText: ""
-    property int maxSearchResults: 10
+    property int maxSearchResults: 8
     property string mode: "apps"
     property string modeHint: ""
     property var usageTimestamps: ({})
@@ -325,13 +325,13 @@ PanelWindow {
         id: launcherBox
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        width: 460
-        height: launcher.visible ? 360 : 0
-        anchors.bottomMargin: launcher.visible ? 12 : -height - 20
+        width: 420
+        height: launcher.visible ? 320 : 0
+        anchors.bottomMargin: launcher.visible ? 10 : -height - 20
         clip: true
 
-        Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-        Behavior on anchors.bottomMargin { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+        Behavior on height { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+        Behavior on anchors.bottomMargin { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
 
         Rectangle {
             anchors.fill: parent
@@ -394,14 +394,14 @@ PanelWindow {
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 6
+                anchors.margins: 8
+                spacing: 5
                 z: 1
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 38
-                    radius: 10
+                    Layout.preferredHeight: 34
+                    radius: 9
                     color: Theme.glassCard
                     border.color: Theme.glassBorder
                     border.width: 1
@@ -416,7 +416,7 @@ PanelWindow {
                         placeholderTextColor: Theme.fgMuted
                         color: Theme.fg
                         font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 13
+                        font.pixelSize: 12
                         background: null
                         focus: true
                         selectByMouse: true
@@ -457,8 +457,8 @@ PanelWindow {
                         required property int index
 
                         width: resultsList.width
-                        height: 38
-                        radius: 9
+                        height: 34
+                        radius: 8
                         color: index === resultsList.currentIndex ? Theme.accent : (hoverItem.containsMouse ? Theme.glassCardHover : "transparent")
                         border.color: index === resultsList.currentIndex ? Theme.accent : "transparent"
                         border.width: 1

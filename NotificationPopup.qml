@@ -90,19 +90,21 @@ PanelWindow {
 
                         Text {
                             text: "󰂚"
-                            color: Theme.accent
+                            color: Theme.mediaAccentActive ? Theme.mediaAccent : Theme.accent
                             font.family: "JetBrainsMono Nerd Font"
                             font.pixelSize: 14
+                            Behavior on color { ColorAnimation { duration: 200 } }
                         }
 
                         Text {
                             Layout.fillWidth: true
                             text: modelData.appName
-                            color: Theme.accent
+                            color: Theme.mediaAccentActive ? Theme.mediaAccent : Theme.accent
                             font.family: "JetBrainsMono Nerd Font"
                             font.pixelSize: 12
                             font.bold: true
                             elide: Text.ElideRight
+                            Behavior on color { ColorAnimation { duration: 200 } }
                         }
 
                         Text {

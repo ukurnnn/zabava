@@ -61,7 +61,21 @@ Item {
     property color sky:       color("sky")
 
     property bool glassEnabled: true
+    property real glassOpacity: 1.0
+    property real glassTint: 1.2
+    property real glassHighlightStrength: 1.3
+    property real glassBorderStrength: 1.1
+    property bool glassBlur: false
+    property bool sheenEnabled: true
+
+    property color mediaAccent: accent
+    property bool mediaAccentActive: false
+
     readonly property string uiStylePath: Quickshell.env("HOME") + "/.config/quickshell/ui-style.json"
+
+    function clampValue(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, Number(v)))
+    }
 
     FileView {
         id: uiStyleFile
@@ -76,6 +90,12 @@ Item {
             try {
                 var obj = JSON.parse(txt)
                 if (obj && obj.glassEnabled !== undefined) root.glassEnabled = obj.glassEnabled === true
+                if (obj && obj.glassOpacity !== undefined) root.glassOpacity = clampValue(obj.glassOpacity, 0.5, 1.6)
+                if (obj && obj.glassTint !== undefined) root.glassTint = clampValue(obj.glassTint, 0.4, 1.8)
+                if (obj && obj.glassHighlightStrength !== undefined) root.glassHighlightStrength = clampValue(obj.glassHighlightStrength, 0.0, 2.0)
+                if (obj && obj.glassBorderStrength !== undefined) root.glassBorderStrength = clampValue(obj.glassBorderStrength, 0.0, 2.0)
+                if (obj && obj.glassBlur !== undefined) root.glassBlur = obj.glassBlur === true
+                if (obj && obj.sheenEnabled !== undefined) root.sheenEnabled = obj.sheenEnabled === true
             } catch (e) {
             }
         }
@@ -88,9 +108,21 @@ Item {
         running: false
     }
 
+    function uiStyleObject() {
+        return {
+            glassEnabled: root.glassEnabled,
+            glassOpacity: root.glassOpacity,
+            glassTint: root.glassTint,
+            glassHighlightStrength: root.glassHighlightStrength,
+            glassBorderStrength: root.glassBorderStrength,
+            glassBlur: root.glassBlur,
+            sheenEnabled: root.sheenEnabled
+        }
+    }
+
     function saveUiStyle() {
         try {
-            var json = JSON.stringify({ glassEnabled: root.glassEnabled }).replace(/'/g, "'\\''")
+            var json = JSON.stringify(uiStyleObject()).replace(/'/g, "'\\''")
             uiStyleSaveProc.command = ["bash", "-lc", "mkdir -p \"$HOME/.config/quickshell\" && printf '%s' '" + json + "' > " + uiStylePath]
             uiStyleSaveProc.running = true
         } catch (e) {
@@ -102,16 +134,35 @@ Item {
         saveUiStyle()
     }
 
-    property color glassPanel: root.glassEnabled ? Qt.rgba((surface.r * 0.55 + accent.r * 0.45), (surface.g * 0.55 + accent.g * 0.45), (surface.b * 0.55 + accent.b * 0.45), 0.32) : bg
-    property color glassPanelStrong: root.glassEnabled ? Qt.rgba((surface.r * 0.45 + accent2.r * 0.55), (surface.g * 0.45 + accent2.g * 0.55), (surface.b * 0.45 + accent2.b * 0.55), 0.44) : bg
-    property color glassCard: root.glassEnabled ? Qt.rgba((surface1.r * 0.58 + accent.r * 0.42), (surface1.g * 0.58 + accent.g * 0.42), (surface1.b * 0.58 + accent.b * 0.42), 0.22) : surface
-    property color glassCardHover: root.glassEnabled ? Qt.rgba((surface1.r * 0.44 + accent2.r * 0.56), (surface1.g * 0.44 + accent2.g * 0.56), (surface1.b * 0.44 + accent2.b * 0.56), 0.34) : surface1
-    property color glassIsland: root.glassEnabled ? Qt.rgba((bg.r * 0.58 + accent.r * 0.42), (bg.g * 0.58 + accent.g * 0.42), (bg.b * 0.58 + accent.b * 0.42), 0.30) : bg
-    property color glassBorder: root.glassEnabled ? Qt.rgba((accent2.r * 0.72 + fg.r * 0.28), (accent2.g * 0.72 + fg.g * 0.28), (accent2.b * 0.72 + fg.b * 0.28), 0.30) : "transparent"
-    property color glassBorderStrong: root.glassEnabled ? Qt.rgba((accent.r * 0.45 + accent2.r * 0.55), (accent.g * 0.45 + accent2.g * 0.55), (accent.b * 0.45 + accent2.b * 0.55), 0.48) : surface1
-    property color glassHighlight: root.glassEnabled ? Qt.rgba((1 * 0.32 + accent2.r * 0.68), (1 * 0.32 + accent2.g * 0.68), (1 * 0.32 + accent2.b * 0.68), 0.38) : "transparent"
-    property color glassHighlightSoft: root.glassEnabled ? Qt.rgba((1 * 0.40 + accent.r * 0.60), (1 * 0.40 + accent.g * 0.60), (1 * 0.40 + accent.b * 0.60), 0.22) : "transparent"
-    property color glassShadow: root.glassEnabled ? Qt.rgba(0, 0, 0, 0.28) : "transparent"
+    function setGlassOpacity(v) { root.glassOpacity = clampValue(v, 0.5, 1.6); saveUiStyle() }
+    function setGlassTint(v) { root.glassTint = clampValue(v, 0.4, 1.8); saveUiStyle() }
+    function setGlassHighlightStrength(v) { root.glassHighlightStrength = clampValue(v, 0.0, 2.0); saveUiStyle() }
+    function setGlassBorderStrength(v) { root.glassBorderStrength = clampValue(v, 0.0, 2.0); saveUiStyle() }
+    function setGlassBlur(v) { root.glassBlur = v === true; saveUiStyle() }
+    function setSheenEnabled(v) { root.sheenEnabled = v === true; saveUiStyle() }
+
+    function mix(a, b, t) {
+        t = Math.max(0, Math.min(1, t))
+        return Qt.rgba(a.r * (1 - t) + b.r * t, a.g * (1 - t) + b.g * t, a.b * (1 - t) + b.b * t, 1)
+    }
+
+    function glassAlpha(base, extra) {
+        var blurBoost = root.glassBlur ? 0.07 : 0
+        return Math.max(0.04, Math.min(0.92, base * root.glassOpacity + (extra || 0) + blurBoost))
+    }
+
+    readonly property real _tint: Math.max(0.15, Math.min(1.0, root.glassTint))
+
+    property color glassPanel: root.glassEnabled ? Qt.rgba(mix(surface, accent, 0.45 * root._tint).r, mix(surface, accent, 0.45 * root._tint).g, mix(surface, accent, 0.45 * root._tint).b, glassAlpha(0.32)) : bg
+    property color glassPanelStrong: root.glassEnabled ? Qt.rgba(mix(surface, accent2, 0.55 * root._tint).r, mix(surface, accent2, 0.55 * root._tint).g, mix(surface, accent2, 0.55 * root._tint).b, glassAlpha(0.44)) : bg
+    property color glassCard: root.glassEnabled ? Qt.rgba(mix(surface1, accent, 0.42 * root._tint).r, mix(surface1, accent, 0.42 * root._tint).g, mix(surface1, accent, 0.42 * root._tint).b, glassAlpha(0.22)) : surface
+    property color glassCardHover: root.glassEnabled ? Qt.rgba(mix(surface1, accent2, 0.56 * root._tint).r, mix(surface1, accent2, 0.56 * root._tint).g, mix(surface1, accent2, 0.56 * root._tint).b, glassAlpha(0.34)) : surface1
+    property color glassIsland: root.glassEnabled ? Qt.rgba(mix(bg, accent, 0.42 * root._tint).r, mix(bg, accent, 0.42 * root._tint).g, mix(bg, accent, 0.42 * root._tint).b, glassAlpha(0.30)) : bg
+    property color glassBorder: root.glassEnabled ? Qt.rgba(mix(fg, accent2, 0.72).r, mix(fg, accent2, 0.72).g, mix(fg, accent2, 0.72).b, Math.max(0.0, Math.min(0.9, 0.30 * root.glassBorderStrength * root.glassOpacity))) : "transparent"
+    property color glassBorderStrong: root.glassEnabled ? Qt.rgba(mix(accent, accent2, 0.55).r, mix(accent, accent2, 0.55).g, mix(accent, accent2, 0.55).b, Math.max(0.0, Math.min(0.95, 0.48 * root.glassBorderStrength * root.glassOpacity))) : surface1
+    property color glassHighlight: root.glassEnabled ? Qt.rgba(mix(Qt.rgba(1,1,1,1), accent2, 0.68).r, mix(Qt.rgba(1,1,1,1), accent2, 0.68).g, mix(Qt.rgba(1,1,1,1), accent2, 0.68).b, Math.max(0.0, Math.min(0.8, 0.38 * root.glassHighlightStrength))) : "transparent"
+    property color glassHighlightSoft: root.glassEnabled ? Qt.rgba(mix(Qt.rgba(1,1,1,1), accent, 0.60).r, mix(Qt.rgba(1,1,1,1), accent, 0.60).g, mix(Qt.rgba(1,1,1,1), accent, 0.60).b, Math.max(0.0, Math.min(0.7, 0.22 * root.glassHighlightStrength))) : "transparent"
+    property color glassShadow: root.glassEnabled ? Qt.rgba(0, 0, 0, Math.max(0.0, Math.min(0.6, 0.28 * root.glassOpacity))) : "transparent"
 
     Behavior on bg       { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
     Behavior on surface  { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
@@ -139,6 +190,7 @@ Item {
     Behavior on glassHighlight { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
     Behavior on glassHighlightSoft { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
     Behavior on glassShadow { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    Behavior on mediaAccent { ColorAnimation { duration: 400; easing.type: Easing.InOutQuad } }
 
     property string current: "matugen"
     readonly property var themeNames: ["matugen"]

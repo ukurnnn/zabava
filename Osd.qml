@@ -86,7 +86,7 @@ PanelWindow {
 
                 Text {
                     text: root.icon
-                    color: root.muted ? Theme.red : Theme.accent
+                    color: root.muted ? Theme.red : (Theme.mediaAccentActive ? Theme.mediaAccent : Theme.accent)
                     font.family: "JetBrainsMono Nerd Font"
                     font.pixelSize: 18
                 }
@@ -116,7 +116,7 @@ PanelWindow {
                     height: parent.height
                     radius: 3
                     width: parent.width * Math.max(0, Math.min(1, root.maxValue > 0 ? root.value / root.maxValue : 0))
-                    color: root.muted ? Theme.red : Theme.accent
+                    color: root.muted ? Theme.red : (Theme.mediaAccentActive ? Theme.mediaAccent : Theme.accent)
                     Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }

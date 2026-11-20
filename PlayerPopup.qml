@@ -218,7 +218,7 @@ PopupWindow {
         anchors.fill: parent
         radius: 24
         color: Theme.glassPanel
-        border.color: root.player && root.player.isPlaying ? Theme.accent : Theme.glassBorderStrong
+        border.color: root.player && root.player.isPlaying ? (Theme.mediaAccentActive ? Theme.mediaAccent : Theme.accent) : Theme.glassBorderStrong
         border.width: 1
 
         opacity: root.visible ? 1 : 0
@@ -238,8 +238,37 @@ PopupWindow {
             radius: Math.max(0, parent.radius - 1)
             z: 0
             gradient: Gradient {
-                GradientStop { position: 0.0; color: Theme.glassHighlight }
+                GradientStop { position: 0.0; color: Theme.mediaAccentActive ? Qt.rgba(Theme.mediaAccent.r, Theme.mediaAccent.g, Theme.mediaAccent.b, Math.min(0.55, Theme.glassHighlight.a + 0.1)) : Theme.glassHighlight }
                 GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
+
+        Item {
+            anchors.fill: parent
+            anchors.margins: 1
+            clip: true
+            visible: Theme.glassEnabled && Theme.sheenEnabled
+            z: 0
+            Rectangle {
+                id: playerSheen
+                width: parent.width * 0.28
+                height: parent.height * 1.4
+                y: -parent.height * 0.2
+                rotation: 18
+                radius: width / 2
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 0.5; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+                opacity: 0.7
+                SequentialAnimation on x {
+                    running: playerSheen.visible && root.visible
+                    loops: Animation.Infinite
+                    NumberAnimation { from: -playerSheen.width * 1.5; to: playerCard.width + playerSheen.width; duration: 6500; easing.type: Easing.InOutSine }
+                    PauseAnimation { duration: 3200 }
+                }
             }
         }
 

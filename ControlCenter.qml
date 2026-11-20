@@ -1045,6 +1045,35 @@ PanelWindow {
             }
         }
 
+        Item {
+            anchors.fill: parent
+            anchors.margins: 1
+            clip: true
+            visible: Theme.glassEnabled && Theme.sheenEnabled
+            z: 0
+            Rectangle {
+                id: panelSheen
+                width: parent.width * 0.22
+                height: parent.height * 1.4
+                y: -parent.height * 0.2
+                rotation: 16
+                radius: width / 2
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 0.5; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+                opacity: 0.55
+                SequentialAnimation on x {
+                    running: panelSheen.visible && root.visible
+                    loops: Animation.Infinite
+                    NumberAnimation { from: -panelSheen.width * 1.5; to: panel.width + panelSheen.width; duration: 8000; easing.type: Easing.InOutSine }
+                    PauseAnimation { duration: 4500 }
+                }
+            }
+        }
+
         MouseArea { anchors.fill: parent; onClicked: {} }
 
         RowLayout {
@@ -2428,7 +2457,7 @@ PanelWindow {
 
                                         Text {
                                             width: parent.width
-                                            text: "Matugen-пресеты и «Из обоев» перегенерируют ~/.config/quickshell/matugen-colors.json (подхватывается автоматически). Кастомная тема записывает палитру напрямую."
+                                            text: "«Из обоев» и пресеты обновляют matugen-colors.json."
                                             color: Theme.fgMuted
                                             font.family: "JetBrainsMono Nerd Font"
                                             font.pixelSize: 10
@@ -2445,7 +2474,7 @@ PanelWindow {
 
                                     Rectangle {
                                         width: (parent.width - 10) / 2
-                                        height: 58
+                                        height: 46
                                         radius: 12
                                         property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 0
                                         color: Theme.glassEnabled ? Theme.accent : (glassStyleMouse.containsMouse ? Theme.surface : Theme.surface1)
@@ -2457,7 +2486,7 @@ PanelWindow {
                                         Row {
                                             anchors.centerIn: parent
                                             spacing: 8
-                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "󰂵"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 18 }
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "󰂵"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 17 }
                                             Text { anchors.verticalCenter: parent.verticalCenter; text: "Стекло"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
                                         }
 
@@ -2472,7 +2501,7 @@ PanelWindow {
 
                                     Rectangle {
                                         width: (parent.width - 10) / 2
-                                        height: 58
+                                        height: 46
                                         radius: 12
                                         color: !Theme.glassEnabled ? Theme.accent : (classicStyleMouse.containsMouse ? Theme.surface : Theme.surface1)
                                         border.color: !Theme.glassEnabled ? Theme.accent : Theme.surface
@@ -2483,7 +2512,7 @@ PanelWindow {
                                         Row {
                                             anchors.centerIn: parent
                                             spacing: 8
-                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "󰘔"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 18 }
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "󰘔"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 17 }
                                             Text { anchors.verticalCenter: parent.verticalCenter; text: "Классика"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
                                         }
 
@@ -2493,6 +2522,148 @@ PanelWindow {
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: Theme.setGlassEnabled(false)
+                                        }
+                                    }
+                                }
+
+                                Column {
+                                    width: parent.width
+                                    spacing: 8
+                                    visible: Theme.glassEnabled
+                                    opacity: visible ? 1 : 0
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                                    Rectangle {
+                                        width: parent.width
+                                        radius: 10
+                                        color: Theme.surface
+                                        implicitHeight: glassTuneCol.implicitHeight + 16
+
+                                        Column {
+                                            id: glassTuneCol
+                                            anchors.left: parent.left
+                                            anchors.right: parent.right
+                                            anchors.top: parent.top
+                                            anchors.margins: 8
+                                            spacing: 8
+
+                                            component GlassSlider: Row {
+                                                id: gs
+                                                required property string label
+                                                required property real value
+                                                required property real minVal
+                                                required property real maxVal
+                                                signal moved(real v)
+                                                width: parent ? parent.width : 200
+                                                height: 24
+                                                spacing: 8
+                                                Text {
+                                                    width: 110
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: gs.label
+                                                    color: Theme.fgMuted
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 11
+                                                    elide: Text.ElideRight
+                                                }
+                                                Item {
+                                                    id: track
+                                                    width: parent.width - 170
+                                                    height: 20
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    property real ratio: Math.max(0, Math.min(1, (gs.value - gs.minVal) / Math.max(0.0001, gs.maxVal - gs.minVal)))
+                                                    Rectangle {
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        width: parent.width
+                                                        height: 6
+                                                        radius: 3
+                                                        color: Theme.bg
+                                                        Rectangle {
+                                                            width: parent.width * track.ratio
+                                                            height: parent.height
+                                                            radius: 3
+                                                            color: Theme.accent
+                                                            Behavior on width { NumberAnimation { duration: 80 } }
+                                                        }
+                                                    }
+                                                    Rectangle {
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        x: Math.max(0, Math.min(parent.width - width, parent.width * track.ratio - width / 2))
+                                                        width: 12; height: 12; radius: 6
+                                                        color: Theme.accent2
+                                                        border.color: Theme.bg; border.width: 1
+                                                    }
+                                                    MouseArea {
+                                                        anchors.fill: parent
+                                                        anchors.margins: -4
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        function setFrom(mx) {
+                                                            var r = Math.max(0, Math.min(1, mx / Math.max(1, track.width)))
+                                                            gs.moved(gs.minVal + r * (gs.maxVal - gs.minVal))
+                                                        }
+                                                        onPressed: (m) => setFrom(m.x)
+                                                        onPositionChanged: (m) => { if (pressed) setFrom(m.x) }
+                                                        onWheel: (w) => {
+                                                            var step = (gs.maxVal - gs.minVal) * 0.05
+                                                            gs.moved(Math.max(gs.minVal, Math.min(gs.maxVal, gs.value + (w.angleDelta.y > 0 ? step : -step))))
+                                                        }
+                                                    }
+                                                }
+                                                Text {
+                                                    width: 44
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    horizontalAlignment: Text.AlignRight
+                                                    text: Math.round(gs.value * 100) + "%"
+                                                    color: Theme.fg
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 10
+                                                }
+                                            }
+
+                                            GlassSlider { label: "Прозрачность"; value: Theme.glassOpacity; minVal: 0.5; maxVal: 1.6; onMoved: (v) => Theme.setGlassOpacity(v) }
+                                            GlassSlider { label: "Насыщенность"; value: Theme.glassTint; minVal: 0.4; maxVal: 1.8; onMoved: (v) => Theme.setGlassTint(v) }
+                                            GlassSlider { label: "Блики"; value: Theme.glassHighlightStrength; minVal: 0.0; maxVal: 2.0; onMoved: (v) => Theme.setGlassHighlightStrength(v) }
+                                            GlassSlider { label: "Рамки"; value: Theme.glassBorderStrength; minVal: 0.0; maxVal: 2.0; onMoved: (v) => Theme.setGlassBorderStrength(v) }
+
+                                            Row {
+                                                width: parent.width
+                                                spacing: 10
+
+                                                Rectangle {
+                                                    width: (parent.width - 10) / 2
+                                                    height: 32
+                                                    radius: 8
+                                                    color: Theme.sheenEnabled ? Theme.accent : (sheenMouse.containsMouse ? Theme.surface1 : Theme.bg)
+                                                    border.color: Theme.surface1
+                                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                                    Text {
+                                                        anchors.centerIn: parent
+                                                        text: "Анимация: " + (Theme.sheenEnabled ? "вкл" : "выкл")
+                                                        color: Theme.sheenEnabled ? Theme.bg : Theme.fg
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 10
+                                                    }
+                                                    MouseArea { id: sheenMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Theme.setSheenEnabled(!Theme.sheenEnabled) }
+                                                }
+
+                                                Rectangle {
+                                                    width: (parent.width - 10) / 2
+                                                    height: 32
+                                                    radius: 8
+                                                    color: Theme.glassBlur ? Theme.accent : (blurMouse.containsMouse ? Theme.surface1 : Theme.bg)
+                                                    border.color: Theme.surface1
+                                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                                    Text {
+                                                        anchors.centerIn: parent
+                                                        text: "Размытие: " + (Theme.glassBlur ? "вкл" : "выкл")
+                                                        color: Theme.glassBlur ? Theme.bg : Theme.fg
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 10
+                                                    }
+                                                    MouseArea { id: blurMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Theme.setGlassBlur(!Theme.glassBlur) }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -2551,7 +2722,7 @@ PanelWindow {
                                                         }
                                                         Text {
                                                             width: parent.width
-                                                            text: "Цвета из текущих обоев (waypaper)"
+                                                            text: "waypaper · matugen"
                                                             color: root.activeColorPreset === modelData.id ? Theme.bg : Theme.fgMuted
                                                             font.family: "JetBrainsMono Nerd Font"
                                                             font.pixelSize: 10
