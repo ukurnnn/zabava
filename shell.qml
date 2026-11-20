@@ -183,7 +183,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -254,7 +254,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -307,7 +307,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -411,7 +411,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -453,7 +453,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -495,7 +495,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -537,7 +537,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -578,7 +578,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -619,7 +619,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }

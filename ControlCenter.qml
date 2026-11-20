@@ -871,9 +871,10 @@ PanelWindow {
                 else if (root.currentPage === "bar" && idx > 0 && idx <= 2) idx = idx - 1
                 else if (root.currentPage === "bar" && idx >= 3) { root.navZone = "sidebar"; event.accepted = true; return }
                 else if (root.currentPage === "colors" && idx === 1) idx = 0
-                else if (root.currentPage === "colors" && idx >= 2) {
+                else if (root.currentPage === "colors" && idx === 2) idx = 1
+                else if (root.currentPage === "colors" && idx >= 3) {
                     var dc = root.colorPresetsByMode("dark").length
-                    var ci = idx - 2
+                    var ci = idx - 3
                     if (ci < dc) { if (ci % 2 === 1) idx = idx - 1; else { root.navZone = "sidebar"; event.accepted = true; return } }
                     else { var li = ci - dc; if (li % 2 === 1) idx = idx - 1; else { root.navZone = "sidebar"; event.accepted = true; return } }
                 } else if (root.currentPage === "general" && idx === 1) idx = 0
@@ -1020,11 +1021,27 @@ PanelWindow {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: 1
-            height: Math.max(0, parent.height * 0.22)
+            height: Math.max(0, parent.height * 0.28)
             radius: Math.max(0, parent.radius - 1)
             gradient: Gradient {
                 GradientStop { position: 0.0; color: Theme.glassHighlight }
+                GradientStop { position: 0.45; color: Theme.glassHighlightSoft }
                 GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
+
+        Rectangle {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 1
+            width: Math.max(0, parent.width * 0.4)
+            height: Math.max(0, parent.height * 0.35)
+            radius: Math.max(0, parent.radius - 1)
+            opacity: Theme.glassEnabled ? 1 : 0
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 1.0; color: Theme.glassHighlightSoft }
             }
         }
 
@@ -2428,7 +2445,7 @@ PanelWindow {
 
                                     Rectangle {
                                         width: (parent.width - 10) / 2
-                                        height: 76
+                                        height: 58
                                         radius: 12
                                         property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 0
                                         color: Theme.glassEnabled ? Theme.accent : (glassStyleMouse.containsMouse ? Theme.surface : Theme.surface1)
@@ -2437,12 +2454,11 @@ PanelWindow {
                                         Behavior on color { ColorAnimation { duration: 180 } }
                                         Behavior on border.color { ColorAnimation { duration: 180 } }
 
-                                        Column {
+                                        Row {
                                             anchors.centerIn: parent
-                                            spacing: 4
-                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󰂵"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
-                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Жидкое стекло"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
-                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "прозрачные панели и блики"; color: Theme.glassEnabled ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                            spacing: 8
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "󰂵"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 18 }
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Стекло"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
                                         }
 
                                         MouseArea {
@@ -2456,7 +2472,7 @@ PanelWindow {
 
                                     Rectangle {
                                         width: (parent.width - 10) / 2
-                                        height: 76
+                                        height: 58
                                         radius: 12
                                         color: !Theme.glassEnabled ? Theme.accent : (classicStyleMouse.containsMouse ? Theme.surface : Theme.surface1)
                                         border.color: !Theme.glassEnabled ? Theme.accent : Theme.surface
@@ -2464,12 +2480,11 @@ PanelWindow {
                                         Behavior on color { ColorAnimation { duration: 180 } }
                                         Behavior on border.color { ColorAnimation { duration: 180 } }
 
-                                        Column {
+                                        Row {
                                             anchors.centerIn: parent
-                                            spacing: 4
-                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󰘔"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
-                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Классический"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
-                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "как было раньше"; color: !Theme.glassEnabled ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                            spacing: 8
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "󰘔"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 18 }
+                                            Text { anchors.verticalCenter: parent.verticalCenter; text: "Классика"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
                                         }
 
                                         MouseArea {
@@ -2803,7 +2818,7 @@ PanelWindow {
 
                                         Text {
                                             width: parent.width
-                                            text: "«Стиль интерфейса» переключает между классическим видом и жидким стеклом (настройка сохраняется в ui-style.json). «Из обоев» берёт путь из ~/.config/waypaper/config.ini и запускает matugen image (dark/light). Stone Trio — кастомная палитра в тёмных темах."
+                                            text: "Стиль сохраняется в ui-style.json. «Из обоев» берёт палитру из waypaper (matugen image, dark/light)."
                                             color: Theme.fgMuted
                                             font.family: "JetBrainsMono Nerd Font"
                                             font.pixelSize: 10

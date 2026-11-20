@@ -26,11 +26,9 @@ PanelWindow {
     property var allApps: []
     property var displayItems: []
     property string searchText: ""
-    property int maxSearchResults: 12
-    property string mode: "apps" // apps, command, calc
+    property int maxSearchResults: 10
+    property string mode: "apps"
     property string modeHint: ""
-
-    // usageTimestamps: { appId: [unix_ts, unix_ts, ...] }
     property var usageTimestamps: ({})
 
     readonly property string usageFile: Quickshell.env("HOME") + "/.config/quickshell/usage.json"
@@ -78,7 +76,6 @@ PanelWindow {
 
     Process { id: usageWriteProc; command: ["bash", "-c", "true"]; running: false }
 
-    // Frecency-score (launcher-only history)
     function frecencyScore(appId) {
         var stamps = usageTimestamps[appId]
         if (!stamps || stamps.length === 0) return 0
@@ -132,7 +129,6 @@ PanelWindow {
             apps.push(entry)
         }
 
-        // Empty-state sort: frecency, then alphabetical
         apps.sort(function(a, b) {
             var scoreA = launcher.frecencyScore(a.id)
             var scoreB = launcher.frecencyScore(b.id)
@@ -145,7 +141,6 @@ PanelWindow {
             launcher.filterApps(launcher.searchText || "")
     }
 
-    // Preserved ranking rules
     function scoreApp(entry, query, allowFuzzy) {
         var q = norm(query)
         if (q === "") return 0
@@ -242,23 +237,21 @@ PanelWindow {
         searchText = query
         var t = query
 
-        // Command execution
         if (t.startsWith(">")) {
             mode = "command"; modeHint = "Команда"
             var cmd = t.substring(1).trim()
             displayItems = cmd.length === 0
-                ? [{ type: "info", icon: "󰆍", title: "Введите команду после >", subtitle: "Enter — выполнить" }]
-                : [{ type: "command", icon: "󰆍", title: "Выполнить: " + cmd, subtitle: "bash -lc · Enter для запуска", cmd: cmd }]
+                ? [{ type: "info", icon: "󰆍", title: "Команда", subtitle: "> команда" }]
+                : [{ type: "command", icon: "󰆍", title: cmd, subtitle: "Запустить", cmd: cmd }]
             resultsList.currentIndex = 0
             return
         }
 
-        // Calculator
         if (t.startsWith("=")) {
             mode = "calc"; modeHint = "Калькулятор"
             var expr = t.substring(1).trim()
             if (expr.length === 0) {
-                displayItems = [{ type: "info", icon: "󰃬", title: "Введите выражение после =", subtitle: "Например: =2+2*10, =sqrt(144)" }]
+                displayItems = [{ type: "info", icon: "󰃬", title: "Калькулятор", subtitle: "= выражение" }]
             } else {
                 displayItems = [{ type: "info", icon: "󰃬", title: "Вычисление...", subtitle: expr }]
                 calcProc.expr = expr
@@ -277,7 +270,6 @@ PanelWindow {
             return
         }
 
-        // Default: apps
         mode = "apps"; modeHint = ""
         displayItems = appResults(query)
         resultsList.currentIndex = 0
@@ -316,9 +308,9 @@ PanelWindow {
                 if (launcher.mode !== "calc") return
                 var val = ((this.text || "").trim().split("\n")[0] || "")
                 if (val === "__ERR__" || val === "") {
-                    launcher.displayItems = [{ type: "info", icon: "󰃬", title: "Ошибка вычисления", subtitle: calcProc.expr }]
+                    launcher.displayItems = [{ type: "info", icon: "󰃬", title: "Ошибка", subtitle: calcProc.expr }]
                 } else {
-                    launcher.displayItems = [{ type: "calc", icon: "󰃬", title: "= " + val, subtitle: calcProc.expr + "  (Enter — скопировать)", expr: calcProc.expr, value: val }]
+                    launcher.displayItems = [{ type: "calc", icon: "󰃬", title: val, subtitle: calcProc.expr, expr: calcProc.expr, value: val }]
                 }
                 resultsList.currentIndex = 0
             }
@@ -333,17 +325,17 @@ PanelWindow {
         id: launcherBox
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        width: 560
-        height: launcher.visible ? 440 : 0
+        width: 460
+        height: launcher.visible ? 360 : 0
         anchors.bottomMargin: launcher.visible ? 12 : -height - 20
         clip: true
 
-        Behavior on height { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-        Behavior on anchors.bottomMargin { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+        Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+        Behavior on anchors.bottomMargin { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
 
         Rectangle {
             anchors.fill: parent
-            radius: 12
+            radius: 14
             color: Theme.glassPanel
             border.color: Theme.glassBorderStrong
             border.width: 1
@@ -352,7 +344,7 @@ PanelWindow {
             transformOrigin: Item.Bottom
 
             Behavior on opacity { NumberAnimation { duration: 160 } }
-            Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 180 } }
             Behavior on border.color { ColorAnimation { duration: 180 } }
 
@@ -361,11 +353,40 @@ PanelWindow {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.margins: 1
-                height: Math.max(0, parent.height * 0.28)
+                height: Math.max(0, parent.height * 0.5)
                 radius: Math.max(0, parent.radius - 1)
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: Theme.glassHighlight }
+                    GradientStop { position: 0.45; color: Theme.glassHighlightSoft }
                     GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
+
+            Rectangle {
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 1
+                width: Math.max(0, parent.width * 0.45)
+                height: Math.max(0, parent.height * 0.6)
+                radius: Math.max(0, parent.radius - 1)
+                opacity: Theme.glassEnabled ? 1 : 0
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Theme.glassHighlightSoft }
+                }
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.margins: 1
+                height: Math.max(0, parent.height * 0.3)
+                radius: Math.max(0, parent.radius - 1)
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 1.0; color: Theme.glassHighlightSoft }
                 }
             }
 
@@ -373,25 +394,29 @@ PanelWindow {
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 12
-                spacing: 8
+                anchors.margins: 10
+                spacing: 6
+                z: 1
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42
-                    radius: 8
-                    color: Theme.surface
+                    Layout.preferredHeight: 38
+                    radius: 10
+                    color: Theme.glassCard
+                    border.color: Theme.glassBorder
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 150 } }
 
                     TextField {
                         id: searchField
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        placeholderText: "Поиск…  (> команда, = калькулятор)"
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        placeholderText: "Поиск  ·  >  ·  ="
                         placeholderTextColor: Theme.fgMuted
                         color: Theme.fg
                         font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 14
+                        font.pixelSize: 13
                         background: null
                         focus: true
                         selectByMouse: true
@@ -418,14 +443,6 @@ PanelWindow {
                     }
                 }
 
-                Text {
-                    visible: launcher.mode !== "apps"
-                    text: launcher.mode === "command" ? "Режим: команда" : "Режим: калькулятор"
-                    color: Theme.fgMuted
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 10
-                }
-
                 ListView {
                     id: resultsList
                     Layout.fillWidth: true
@@ -440,10 +457,13 @@ PanelWindow {
                         required property int index
 
                         width: resultsList.width
-                        height: 44
-                        radius: 8
-                        color: index === resultsList.currentIndex ? Theme.accent : (hoverItem.containsMouse ? Theme.surface : "transparent")
+                        height: 38
+                        radius: 9
+                        color: index === resultsList.currentIndex ? Theme.accent : (hoverItem.containsMouse ? Theme.glassCardHover : "transparent")
+                        border.color: index === resultsList.currentIndex ? Theme.accent : "transparent"
+                        border.width: 1
                         Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on border.color { ColorAnimation { duration: 120 } }
 
                         property bool isApp: modelData.type === "app" && modelData.app
                         property string iconSource: (isApp && modelData.app.icon) ? Quickshell.iconPath(modelData.app.icon) : ""
@@ -457,11 +477,11 @@ PanelWindow {
                             anchors.fill: parent
                             anchors.leftMargin: 8
                             anchors.rightMargin: 8
-                            spacing: 10
+                            spacing: 8
 
                             Item {
-                                Layout.preferredWidth: 24
-                                Layout.preferredHeight: 24
+                                Layout.preferredWidth: 22
+                                Layout.preferredHeight: 22
                                 Layout.alignment: Qt.AlignVCenter
                                 IconImage { anchors.fill: parent; source: iconSource; visible: iconSource !== "" }
                                 Text {
@@ -470,7 +490,7 @@ PanelWindow {
                                     text: glyph
                                     color: index === resultsList.currentIndex ? Theme.bg : Theme.fg
                                     font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 15
+                                    font.pixelSize: 14
                                 }
                             }
 
@@ -485,7 +505,7 @@ PanelWindow {
                                     color: index === resultsList.currentIndex ? Theme.bg : Theme.fg
                                     Behavior on color { ColorAnimation { duration: 120 } }
                                     font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 13
+                                    font.pixelSize: 12
                                     elide: Text.ElideRight
                                 }
 
@@ -495,7 +515,7 @@ PanelWindow {
                                     text: isApp ? (modelData.app.genericName || "") : (modelData.subtitle || "")
                                     color: index === resultsList.currentIndex ? Theme.bg : Theme.fgMuted
                                     font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 10
+                                    font.pixelSize: 9
                                     elide: Text.ElideRight
                                 }
                             }

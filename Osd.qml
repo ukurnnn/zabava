@@ -65,10 +65,11 @@ PanelWindow {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: 1
-            height: Math.max(0, parent.height * 0.5)
+            height: Math.max(0, parent.height * 0.55)
             radius: Math.max(0, parent.radius - 1)
             gradient: Gradient {
                 GradientStop { position: 0.0; color: Theme.glassHighlight }
+                GradientStop { position: 0.5; color: Theme.glassHighlightSoft }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }

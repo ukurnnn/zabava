@@ -12,8 +12,6 @@ Item {
 
     property var matugenColors: ({})
 
-    // FileView: читает один раз и следит за изменением файла (matugen перезаписывает json).
-    // Никаких опросов и спавна процессов.
     FileView {
         id: colorsFile
         path: Quickshell.env("HOME") + "/.config/quickshell/matugen-colors.json"
@@ -27,11 +25,9 @@ Item {
             try {
                 root.matugenColors = JSON.parse(txt)
             } catch (e) {
-                console.log("Matugen parse error:", e)
             }
         }
 
-        // matugen обновил палитру (смена обоев) — перечитываем мгновенно
         onFileChanged: colorsFile.reload()
     }
 
@@ -64,7 +60,6 @@ Item {
     property color teal:      color("teal")
     property color sky:       color("sky")
 
-    // Visual style: "glass" | "classic"
     property bool glassEnabled: true
     readonly property string uiStylePath: Quickshell.env("HOME") + "/.config/quickshell/ui-style.json"
 
@@ -107,17 +102,16 @@ Item {
         saveUiStyle()
     }
 
-    // Liquid glass tokens (derived from matugen palette; fall back to classic solid look)
-    property color glassPanel: root.glassEnabled ? Qt.rgba(surface.r, surface.g, surface.b, 0.44) : bg
-    property color glassPanelStrong: root.glassEnabled ? Qt.rgba(surface.r, surface.g, surface.b, 0.60) : bg
-    property color glassCard: root.glassEnabled ? Qt.rgba(surface1.r, surface1.g, surface1.b, 0.26) : surface
-    property color glassCardHover: root.glassEnabled ? Qt.rgba(surface1.r, surface1.g, surface1.b, 0.40) : surface1
-    property color glassIsland: root.glassEnabled ? Qt.rgba(bg.r, bg.g, bg.b, 0.40) : bg
-    property color glassBorder: root.glassEnabled ? Qt.rgba(fg.r, fg.g, fg.b, 0.12) : "transparent"
-    property color glassBorderStrong: root.glassEnabled ? Qt.rgba(accent2.r, accent2.g, accent2.b, 0.22) : surface1
-    property color glassHighlight: root.glassEnabled ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
-    property color glassHighlightSoft: root.glassEnabled ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
-    property color glassShadow: root.glassEnabled ? Qt.rgba(0, 0, 0, 0.24) : "transparent"
+    property color glassPanel: root.glassEnabled ? Qt.rgba((surface.r * 0.55 + accent.r * 0.45), (surface.g * 0.55 + accent.g * 0.45), (surface.b * 0.55 + accent.b * 0.45), 0.32) : bg
+    property color glassPanelStrong: root.glassEnabled ? Qt.rgba((surface.r * 0.45 + accent2.r * 0.55), (surface.g * 0.45 + accent2.g * 0.55), (surface.b * 0.45 + accent2.b * 0.55), 0.44) : bg
+    property color glassCard: root.glassEnabled ? Qt.rgba((surface1.r * 0.58 + accent.r * 0.42), (surface1.g * 0.58 + accent.g * 0.42), (surface1.b * 0.58 + accent.b * 0.42), 0.22) : surface
+    property color glassCardHover: root.glassEnabled ? Qt.rgba((surface1.r * 0.44 + accent2.r * 0.56), (surface1.g * 0.44 + accent2.g * 0.56), (surface1.b * 0.44 + accent2.b * 0.56), 0.34) : surface1
+    property color glassIsland: root.glassEnabled ? Qt.rgba((bg.r * 0.58 + accent.r * 0.42), (bg.g * 0.58 + accent.g * 0.42), (bg.b * 0.58 + accent.b * 0.42), 0.30) : bg
+    property color glassBorder: root.glassEnabled ? Qt.rgba((accent2.r * 0.72 + fg.r * 0.28), (accent2.g * 0.72 + fg.g * 0.28), (accent2.b * 0.72 + fg.b * 0.28), 0.30) : "transparent"
+    property color glassBorderStrong: root.glassEnabled ? Qt.rgba((accent.r * 0.45 + accent2.r * 0.55), (accent.g * 0.45 + accent2.g * 0.55), (accent.b * 0.45 + accent2.b * 0.55), 0.48) : surface1
+    property color glassHighlight: root.glassEnabled ? Qt.rgba((1 * 0.32 + accent2.r * 0.68), (1 * 0.32 + accent2.g * 0.68), (1 * 0.32 + accent2.b * 0.68), 0.38) : "transparent"
+    property color glassHighlightSoft: root.glassEnabled ? Qt.rgba((1 * 0.40 + accent.r * 0.60), (1 * 0.40 + accent.g * 0.60), (1 * 0.40 + accent.b * 0.60), 0.22) : "transparent"
+    property color glassShadow: root.glassEnabled ? Qt.rgba(0, 0, 0, 0.28) : "transparent"
 
     Behavior on bg       { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
     Behavior on surface  { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
