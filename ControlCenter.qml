@@ -31,6 +31,8 @@ PanelWindow {
     property var weatherModule: null
 
     property string currentPage: "network"
+    property string navZone: "sidebar"
+    property int contentFocusIndex: 0
     property var sink: Pipewire.defaultAudioSink
     property var sinkAudio: sink ? sink.audio : null
     property var source: Pipewire.defaultAudioSource
@@ -115,8 +117,131 @@ PanelWindow {
         return "Настройки"
     }
 
+    function pageIndex(id) {
+        for (var i = 0; i < pages.length; i++) if (pages[i].id === id) return i
+        return 0
+    }
+
+    function netItemCount() { return 3 + (netWifiNetworks ? netWifiNetworks.length : 0) }
+    function audioItemCount() { return 5 + outputNodes().length + inputNodes().length }
+    function notifItemCount() { return 2 + (NotificationService.history ? NotificationService.history.count : 0) }
+    function barItemCount() { return 3 + BarConfig.allPresets().length + 1 }
+    function colorsItemCount() { return 2 + colorPresetsByMode("dark").length + colorPresetsByMode("light").length }
+
+    function contentCount(pageId) {
+        if (pageId === "network") return netItemCount()
+        if (pageId === "audio") return audioItemCount()
+        if (pageId === "notifications") return notifItemCount()
+        if (pageId === "bar") return barItemCount()
+        if (pageId === "colors") return colorsItemCount()
+        if (pageId === "power") return 5
+        if (pageId === "general") return 8
+        return 0
+    }
+
+    function clampContentFocus() {
+        var c = contentCount(currentPage)
+        if (c <= 0) { contentFocusIndex = 0; return }
+        if (contentFocusIndex < 0) contentFocusIndex = 0
+        if (contentFocusIndex >= c) contentFocusIndex = c - 1
+    }
+
+    function moveSidebar(delta) {
+        var i = pageIndex(currentPage) + delta
+        if (i < 0) i = pages.length - 1
+        if (i >= pages.length) i = 0
+        currentPage = pages[i].id
+        contentFocusIndex = 0
+        navZone = "sidebar"
+    }
+
+    function activateFocused() {
+        var idx = contentFocusIndex
+        if (currentPage === "network") {
+            if (idx === 0) refreshNetwork()
+            else if (idx === 1) toggleWifiRadio()
+            else if (idx === 2) openAndClose(networkPopup)
+            else {
+                var ni = idx - 3
+                if (ni >= 0 && ni < netWifiNetworks.length) {
+                    var n = netWifiNetworks[ni]
+                    if (n.inUse) netActionProc.command = ["bash", "-lc", "nmcli device disconnect " + (root.netDevice || "wlan0")]
+                    else {
+                        var ssid = (n.ssid || "").replace(/'/g, "'\\''")
+                        netActionProc.command = ["bash", "-lc", "nmcli dev wifi connect '" + ssid + "' || nm-connection-editor >/dev/null 2>&1 &"]
+                    }
+                    netActionProc.running = true
+                }
+            }
+        } else if (currentPage === "audio") {
+            var outs = outputNodes()
+            var ins = inputNodes()
+            var inMuteIdx = 3 + outs.length
+            var inStart = inMuteIdx + 1
+            var openIdx = inStart + ins.length
+            if (idx === 0) { if (sinkAudio) sinkAudio.muted = !sinkAudio.muted }
+            else if (idx === 1) openAndClose(audioPopup)
+            else if (idx >= 2 && idx < 2 + outs.length) setDefaultSink(outs[idx - 2])
+            else if (idx === inMuteIdx) Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_SOURCE@", "toggle"])
+            else if (idx >= inStart && idx < openIdx) setDefaultSource(ins[idx - inStart])
+            else if (idx === openIdx) openAndClose(playerPopup)
+        } else if (currentPage === "notifications") {
+            if (idx === 0) NotificationService.toggleDnd()
+            else if (idx === 1) NotificationService.dismissAll()
+            else {
+                var ni = idx - 2
+                if (NotificationService.history && ni >= 0 && ni < NotificationService.history.count)
+                    NotificationService.dismiss(NotificationService.history.get(ni).id)
+            }
+        } else if (currentPage === "bar") {
+            if (idx === 0) BarConfig.setStyle("islands")
+            else if (idx === 1) BarConfig.setStyle("monolithic")
+            else if (idx === 2) BarConfig.setStyle("full")
+            else {
+                var presets = BarConfig.allPresets()
+                var pi = idx - 3
+                if (pi >= 0 && pi < presets.length) BarConfig.applyPreset(presets[pi].id)
+                else if (pi === presets.length) BarConfig.saveCurrentAsMyPreset()
+            }
+        } else if (currentPage === "colors") {
+            var dyn = colorPresetsByMode("dynamic")
+            var darks = colorPresetsByMode("dark")
+            var lights = colorPresetsByMode("light")
+            if (idx === 0 && dyn.length > 0) applyColorPreset(dyn[0])
+            else if (idx === 1) {
+                wallpaperColorMode = (wallpaperColorMode === "dark" ? "light" : "dark")
+                saveColorPresets()
+                if (activeColorPreset === "wallpaper" && dyn.length > 0) applyColorPreset(dyn[0])
+            } else {
+                var ci = idx - 2
+                if (ci >= 0 && ci < darks.length) applyColorPreset(darks[ci])
+                else if (ci >= darks.length && ci < darks.length + lights.length) applyColorPreset(lights[ci - darks.length])
+            }
+        } else if (currentPage === "power") {
+            var cmds = [
+                ["loginctl", "lock-session"],
+                ["niri", "msg", "action", "quit", "-s"],
+                ["systemctl", "suspend"],
+                ["systemctl", "reboot"],
+                ["systemctl", "poweroff"]
+            ]
+            if (idx >= 0 && idx < cmds.length) { root.visible = false; Quickshell.execDetached(cmds[idx]) }
+        } else if (currentPage === "general") {
+            if (idx === 0) { if (caffeineModule) caffeineModule.toggle() }
+            else if (idx === 1) Quickshell.execDetached(["niri", "msg", "action", "switch-layout", "next"])
+            else if (idx === 2) openAndClose(appLauncher)
+            else if (idx === 3) openAndClose(clipboardMenu)
+            else if (idx === 4) openAndClose(calendarPopup)
+            else if (idx === 5) currentPage = "colors"
+            else if (idx === 6) openAndClose(playerPopup)
+            else if (idx === 7) openAndClose(powerMenu)
+        }
+    }
+
     onVisibleChanged: {
         if (visible) {
+            navZone = "sidebar"
+            contentFocusIndex = 0
             keyHandler.forceActiveFocus()
             if (currentPage === "network") refreshNetwork()
             if (currentPage === "audio") refreshBatteries()
@@ -124,6 +249,7 @@ PanelWindow {
     }
 
     onCurrentPageChanged: {
+        contentFocusIndex = 0
         if (!visible) return
         if (currentPage === "network") refreshNetwork()
         if (currentPage === "audio") refreshBatteries()
@@ -218,10 +344,15 @@ PanelWindow {
             } catch (e) {}
         } else if (preset.kind === "wallpaper") {
             var mode = root.wallpaperColorMode || "dark"
-            var cmdStr = "wp=$(grep -E '^wallpaper\\s*=' \"$HOME/.config/waypaper/config.ini\" 2>/dev/null | tail -n1 | cut -d= -f2- | sed 's/^ *//;s/ *$//'); " +
-                         "wp=$(eval echo \"$wp\" 2>/dev/null || echo \"$wp\"); " +
-                         "if [ -z \"$wp\" ] || [ ! -f \"$wp\" ]; then wp=$(find \"$HOME/Pictures/wallpapers\" \"$HOME/Загрузки/Wallpapers\" -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \\) 2>/dev/null | head -n 1); fi; " +
-                         "if [ -n \"$wp\" ] && [ -f \"$wp\" ]; then matugen image \"$wp\" -m " + mode + "; fi"
+            var cmdStr = "cfg=\"$HOME/.config/waypaper/config.ini\"; wp=''; " +
+                         "if [ -f \"$cfg\" ]; then " +
+                         "  wp=$(grep -E '^[[:space:]]*wallpaper[[:space:]]*=' \"$cfg\" 2>/dev/null | tail -n1 | sed 's/^[^=]*=//;s/^[[:space:]]*//;s/[[:space:]]*$//'); " +
+                         "fi; " +
+                         "case \"$wp\" in \"~/\"*) wp=\"$HOME/${wp#~/}\";; '~') wp=\"$HOME\";; esac; " +
+                         "if [ -z \"$wp\" ] || [ ! -f \"$wp\" ]; then " +
+                         "  wp=$(find \"$HOME/Pictures/wallpapers\" \"$HOME/Pictures/Wallpapers\" \"$HOME/Загрузки/Wallpapers\" \"$HOME/wallpapers\" -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \\) 2>/dev/null | head -n 1); " +
+                         "fi; " +
+                         "if [ -n \"$wp\" ] && [ -f \"$wp\" ]; then matugen image \"$wp\" -m " + mode + " --source-color-index 0; fi"
             matugenApplyProc.command = ["bash", "-lc", cmdStr]
             matugenApplyProc.running = true
         } else {
@@ -447,7 +578,172 @@ PanelWindow {
         anchors.fill: parent
         focus: true
         Keys.onPressed: (event) => {
-            if (event.key === Qt.Key_Escape) { root.visible = false; event.accepted = true }
+            if (event.key === Qt.Key_Escape) {
+                root.visible = false
+                event.accepted = true
+                return
+            }
+
+            if (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ShiftModifier)) {
+                root.moveSidebar(1)
+                event.accepted = true
+                return
+            }
+            if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
+                root.moveSidebar(-1)
+                event.accepted = true
+                return
+            }
+
+            if (root.navZone === "sidebar") {
+                if (event.key === Qt.Key_Up || event.key === Qt.Key_K) {
+                    root.moveSidebar(-1); event.accepted = true
+                } else if (event.key === Qt.Key_Down || event.key === Qt.Key_J) {
+                    root.moveSidebar(1); event.accepted = true
+                } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space || event.key === Qt.Key_L) {
+                    root.contentFocusIndex = 0
+                    root.navZone = "content"
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Left || event.key === Qt.Key_H) {
+                    event.accepted = true
+                }
+                return
+            }
+
+            var count = root.contentCount(root.currentPage)
+            if (count <= 0) {
+                if (event.key === Qt.Key_Left || event.key === Qt.Key_H) { root.navZone = "sidebar"; event.accepted = true }
+                return
+            }
+
+            var idx = root.contentFocusIndex
+            function clampIdx(i) { return Math.max(0, Math.min(count - 1, i)) }
+
+            if (event.key === Qt.Key_Left || event.key === Qt.Key_H) {
+                if (root.currentPage === "network" && idx === 2) idx = 1
+                else if (root.currentPage === "bar" && idx > 0 && idx <= 2) idx = idx - 1
+                else if (root.currentPage === "bar" && idx >= 3) { root.navZone = "sidebar"; event.accepted = true; return }
+                else if (root.currentPage === "colors" && idx === 1) idx = 0
+                else if (root.currentPage === "colors" && idx >= 2) {
+                    var dc = root.colorPresetsByMode("dark").length
+                    var ci = idx - 2
+                    if (ci < dc) { if (ci % 2 === 1) idx = idx - 1; else { root.navZone = "sidebar"; event.accepted = true; return } }
+                    else { var li = ci - dc; if (li % 2 === 1) idx = idx - 1; else { root.navZone = "sidebar"; event.accepted = true; return } }
+                } else if (root.currentPage === "general" && idx === 1) idx = 0
+                else if (root.currentPage === "general" && idx >= 2) {
+                    var gi = idx - 2
+                    if (gi % 3 !== 0) idx = idx - 1
+                    else { root.navZone = "sidebar"; event.accepted = true; return }
+                } else if (root.currentPage === "audio") {
+                    if (idx === 0) { root.navZone = "sidebar"; event.accepted = true; return }
+                    else if (idx >= 1 && idx <= 1) idx = 0
+                    else if (idx > 1) idx = idx - 1
+                } else if (root.currentPage === "notifications" && idx === 1) idx = 0
+                else { root.navZone = "sidebar"; event.accepted = true; return }
+                root.contentFocusIndex = clampIdx(idx)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Right || event.key === Qt.Key_L) {
+                if (root.currentPage === "network" && idx === 1) idx = 2
+                else if (root.currentPage === "bar" && idx >= 0 && idx < 2) idx = idx + 1
+                else if (root.currentPage === "colors" && idx === 0) idx = 1
+                else if (root.currentPage === "colors" && idx >= 2) {
+                    var dc2 = root.colorPresetsByMode("dark").length
+                    var lc2 = root.colorPresetsByMode("light").length
+                    var ci2 = idx - 2
+                    if (ci2 < dc2) { if (ci2 % 2 === 0 && ci2 + 1 < dc2) idx = idx + 1 }
+                    else { var li2 = ci2 - dc2; if (li2 % 2 === 0 && li2 + 1 < lc2) idx = idx + 1 }
+                } else if (root.currentPage === "general" && idx === 0) idx = 1
+                else if (root.currentPage === "general" && idx >= 2) {
+                    var gi2 = idx - 2
+                    if (gi2 % 3 !== 2 && idx + 1 < count) idx = idx + 1
+                } else if (root.currentPage === "audio") {
+                    idx = clampIdx(idx + 1)
+                } else if (root.currentPage === "notifications" && idx === 0) idx = 1
+                else idx = clampIdx(idx + 1)
+                root.contentFocusIndex = clampIdx(idx)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Up || event.key === Qt.Key_K) {
+                if (root.currentPage === "bar") {
+                    if (idx <= 2) { root.navZone = "sidebar"; event.accepted = true; return }
+                    else if (idx === 3) idx = 0
+                    else idx = idx - 1
+                } else if (root.currentPage === "colors") {
+                    var dc3 = root.colorPresetsByMode("dark").length
+                    if (idx <= 1) { root.navZone = "sidebar"; event.accepted = true; return }
+                    else {
+                        var ci3 = idx - 2
+                        if (ci3 < dc3) {
+                            if (ci3 < 2) idx = 0
+                            else idx = idx - 2
+                        } else {
+                            var li3 = ci3 - dc3
+                            if (li3 < 2) idx = 2 + Math.max(0, dc3 - 2 + (li3 % 2))
+                            else idx = idx - 2
+                        }
+                    }
+                } else if (root.currentPage === "general") {
+                    if (idx <= 1) { root.navZone = "sidebar"; event.accepted = true; return }
+                    else if (idx <= 4) idx = idx - 2
+                    else idx = idx - 3
+                } else if (root.currentPage === "network") {
+                    if (idx === 0) { root.navZone = "sidebar"; event.accepted = true; return }
+                    else if (idx <= 2) idx = 0
+                    else if (idx === 3) idx = 1
+                    else idx = idx - 1
+                } else if (root.currentPage === "notifications") {
+                    if (idx === 0) { root.navZone = "sidebar"; event.accepted = true; return }
+                    else idx = idx - 1
+                } else if (root.currentPage === "audio") {
+                    if (idx === 0) { root.navZone = "sidebar"; event.accepted = true; return }
+                    else idx = idx - 1
+                } else {
+                    if (idx === 0) { root.navZone = "sidebar"; event.accepted = true; return }
+                    idx = idx - 1
+                }
+                root.contentFocusIndex = clampIdx(idx)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Down || event.key === Qt.Key_J) {
+                if (root.currentPage === "bar") {
+                    if (idx < 2) idx = 3
+                    else idx = clampIdx(idx + 1)
+                } else if (root.currentPage === "colors") {
+                    var dc4 = root.colorPresetsByMode("dark").length
+                    var lc4 = root.colorPresetsByMode("light").length
+                    if (idx <= 1) idx = 2
+                    else {
+                        var ci4 = idx - 2
+                        if (ci4 < dc4) {
+                            if (ci4 + 2 < dc4) idx = idx + 2
+                            else if (lc4 > 0) idx = 2 + dc4 + Math.min(ci4 % 2, lc4 - 1)
+                            else idx = idx
+                        } else {
+                            var li4 = ci4 - dc4
+                            if (li4 + 2 < lc4) idx = idx + 2
+                        }
+                    }
+                } else if (root.currentPage === "general") {
+                    if (idx <= 1) idx = idx + 2
+                    else if (idx <= 4) idx = Math.min(count - 1, idx + 3)
+                    else idx = clampIdx(idx + 1)
+                } else if (root.currentPage === "network") {
+                    if (idx === 0) idx = 1
+                    else if (idx <= 2) idx = 3 < count ? 3 : idx
+                    else idx = clampIdx(idx + 1)
+                } else {
+                    idx = clampIdx(idx + 1)
+                }
+                root.contentFocusIndex = clampIdx(idx)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                root.activateFocused()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Home) {
+                root.contentFocusIndex = 0
+                event.accepted = true
+            } else if (event.key === Qt.Key_End) {
+                root.contentFocusIndex = count - 1
+                event.accepted = true
+            }
         }
     }
 
@@ -610,6 +906,8 @@ PanelWindow {
                                 Rectangle {
                                     width: parent.width; radius: 12; color: Theme.surface
                                     implicitHeight: netStatusCol.implicitHeight + 20
+                                    border.color: (root.navZone === "content" && root.contentFocusIndex === 0) ? Theme.accent : "transparent"
+                                    border.width: (root.navZone === "content" && root.contentFocusIndex === 0) ? 1 : 0
                                     Column {
                                         id: netStatusCol
                                         anchors.fill: parent; anchors.margins: 10; spacing: 6
@@ -656,7 +954,8 @@ PanelWindow {
                                     Rectangle {
                                         width: (parent.width - 8) / 2; height: 36; radius: 10
                                         color: root.netWifiEnabled ? Theme.accent : Theme.surface
-                                        border.color: Theme.surface1
+                                        border.color: (root.navZone === "content" && root.contentFocusIndex === 1) ? Theme.accent : Theme.surface1
+                                        border.width: (root.navZone === "content" && root.contentFocusIndex === 1) ? 2 : 1
                                         Text {
                                             anchors.centerIn: parent
                                             text: root.netWifiEnabled ? "󰖩 Wi-Fi: вкл" : "󰖪 Wi-Fi: выкл"
@@ -668,7 +967,8 @@ PanelWindow {
                                     Rectangle {
                                         width: (parent.width - 8) / 2; height: 36; radius: 10
                                         color: openNetMouse.containsMouse ? Theme.surface1 : Theme.surface
-                                        border.color: Theme.surface1
+                                        border.color: (root.navZone === "content" && root.contentFocusIndex === 2) ? Theme.accent : Theme.surface1
+                                        border.width: (root.navZone === "content" && root.contentFocusIndex === 2) ? 2 : 1
                                         Text { anchors.centerIn: parent; text: "󰒓 Открыть попап"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
                                         MouseArea { id: openNetMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.openAndClose(root.networkPopup) }
                                     }
@@ -682,9 +982,11 @@ PanelWindow {
                                         model: root.netWifiNetworks
                                         delegate: Rectangle {
                                             required property var modelData
+                                            required property int index
                                             width: netCol.width; height: 42; radius: 10
                                             color: modelData.inUse ? Theme.accent : (netItemMouse.containsMouse ? Theme.surface : Theme.surface1)
-                                            border.color: modelData.inUse ? Theme.accent : "transparent"
+                                            border.color: (root.navZone === "content" && root.contentFocusIndex === index + 3) ? Theme.accent : (modelData.inUse ? Theme.accent : "transparent")
+                                            border.width: (root.navZone === "content" && root.contentFocusIndex === index + 3) ? 2 : (modelData.inUse ? 1 : 0)
                                             Row {
                                                 anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 8
                                                 Text { anchors.verticalCenter: parent.verticalCenter; text: root.netSignalIcon(modelData.signal); color: modelData.inUse ? Theme.bg : Theme.green; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
@@ -1028,7 +1330,8 @@ PanelWindow {
                                 Rectangle {
                                     width: 150; height: 36; radius: 10
                                     color: NotificationService.dnd ? Theme.red : Theme.surface
-                                    border.color: Theme.surface1
+                                    border.color: (root.navZone === "content" && root.currentPage === "notifications" && root.contentFocusIndex === 0) ? Theme.accent : Theme.surface1
+                                    border.width: (root.navZone === "content" && root.currentPage === "notifications" && root.contentFocusIndex === 0) ? 2 : 1
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                     Behavior on border.color { ColorAnimation { duration: 150 } }
                                     Text { anchors.centerIn: parent; text: NotificationService.dnd ? "󰂛 DND: вкл" : "󰂚 DND: выкл"; color: NotificationService.dnd ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
@@ -1037,7 +1340,8 @@ PanelWindow {
                                 Rectangle {
                                     width: 150; height: 36; radius: 10
                                     color: clearAllMouse.containsMouse ? Theme.surface1 : Theme.surface
-                                    border.color: Theme.surface1
+                                    border.color: (root.navZone === "content" && root.currentPage === "notifications" && root.contentFocusIndex === 1) ? Theme.accent : Theme.surface1
+                                    border.width: (root.navZone === "content" && root.currentPage === "notifications" && root.contentFocusIndex === 1) ? 2 : 1
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                     Behavior on border.color { ColorAnimation { duration: 150 } }
                                     Text { anchors.centerIn: parent; text: "󰆴 Очистить всё"; color: clearAllMouse.containsMouse ? Theme.red : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
@@ -1060,8 +1364,9 @@ PanelWindow {
                                     height: nContent.implicitHeight + 20
                                     radius: 10
                                     color: Theme.surface
-                                    border.color: modelData.urgency === 2 ? Theme.red : "transparent"
-                                    border.width: modelData.urgency === 2 ? 1 : 0
+                                    property bool kbdFocused: root.navZone === "content" && root.currentPage === "notifications" && root.contentFocusIndex === index + 2
+                                    border.color: kbdFocused ? Theme.accent : (modelData.urgency === 2 ? Theme.red : "transparent")
+                                    border.width: kbdFocused ? 2 : (modelData.urgency === 2 ? 1 : 0)
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                     Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -1120,9 +1425,10 @@ PanelWindow {
                                         width: (parent.width - 20) / 3
                                         height: 84
                                         radius: 12
+                                        property bool kbdFocused: root.navZone === "content" && root.currentPage === "bar" && root.contentFocusIndex === 0
                                         color: BarConfig.style === "islands" ? Theme.accent : Theme.surface
-                                        border.color: BarConfig.style === "islands" ? Theme.accent : Theme.surface1
-                                        border.width: 1
+                                        border.color: kbdFocused ? Theme.accent2 : (BarConfig.style === "islands" ? Theme.accent : Theme.surface1)
+                                        border.width: kbdFocused ? 2 : 1
                                         Behavior on color { ColorAnimation { duration: 180 } }
                                         Behavior on border.color { ColorAnimation { duration: 180 } }
 
@@ -1145,9 +1451,10 @@ PanelWindow {
                                         width: (parent.width - 20) / 3
                                         height: 84
                                         radius: 12
+                                        property bool kbdFocused: root.navZone === "content" && root.currentPage === "bar" && root.contentFocusIndex === 1
                                         color: BarConfig.style === "monolithic" ? Theme.accent : Theme.surface
-                                        border.color: BarConfig.style === "monolithic" ? Theme.accent : Theme.surface1
-                                        border.width: 1
+                                        border.color: kbdFocused ? Theme.accent2 : (BarConfig.style === "monolithic" ? Theme.accent : Theme.surface1)
+                                        border.width: kbdFocused ? 2 : 1
                                         Behavior on color { ColorAnimation { duration: 180 } }
                                         Behavior on border.color { ColorAnimation { duration: 180 } }
 
@@ -1171,9 +1478,10 @@ PanelWindow {
                                         width: (parent.width - 20) / 3
                                         height: 84
                                         radius: 12
+                                        property bool kbdFocused: root.navZone === "content" && root.currentPage === "bar" && root.contentFocusIndex === 2
                                         color: BarConfig.style === "full" ? Theme.accent : Theme.surface
-                                        border.color: BarConfig.style === "full" ? Theme.accent : Theme.surface1
-                                        border.width: 1
+                                        border.color: kbdFocused ? Theme.accent2 : (BarConfig.style === "full" ? Theme.accent : Theme.surface1)
+                                        border.width: kbdFocused ? 2 : 1
                                         Behavior on color { ColorAnimation { duration: 180 } }
                                         Behavior on border.color { ColorAnimation { duration: 180 } }
 
@@ -1221,11 +1529,14 @@ PanelWindow {
 
                                         delegate: Rectangle {
                                             required property var modelData
+                                            required property int index
                                             width: barCol.width
                                             height: 46
                                             radius: 10
+                                            property bool kbdFocused: root.navZone === "content" && root.currentPage === "bar" && root.contentFocusIndex === index + 3
                                             color: BarConfig.activePreset === modelData.id ? Theme.accent : (presetMouse.containsMouse ? Theme.surface : Theme.surface1)
-                                            border.color: BarConfig.activePreset === modelData.id ? Theme.accent : "transparent"
+                                            border.color: kbdFocused ? Theme.accent2 : (BarConfig.activePreset === modelData.id ? Theme.accent : "transparent")
+                                            border.width: kbdFocused ? 2 : (BarConfig.activePreset === modelData.id ? 1 : 0)
                                             Behavior on color { ColorAnimation { duration: 150 } }
                                             Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -1282,8 +1593,10 @@ PanelWindow {
                                     width: parent.width
                                     height: 44
                                     radius: 10
+                                    property bool kbdFocused: root.navZone === "content" && root.currentPage === "bar" && root.contentFocusIndex === BarConfig.allPresets().length + 3
                                     color: savePresetMouse.containsMouse ? Theme.accent : Theme.surface
-                                    border.color: Theme.surface1
+                                    border.color: kbdFocused ? Theme.accent : Theme.surface1
+                                    border.width: kbdFocused ? 2 : 1
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                     Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -1395,9 +1708,10 @@ PanelWindow {
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: 72
                                             radius: 12
+                                            property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 0
                                             color: root.activeColorPreset === modelData.id ? Theme.accent : (dynMouse.containsMouse ? Theme.surface : Theme.surface1)
-                                            border.color: root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface
-                                            border.width: 1
+                                            border.color: kbdFocused ? Theme.accent2 : (root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface)
+                                            border.width: kbdFocused ? 2 : 1
                                             Behavior on color { ColorAnimation { duration: 180 } }
                                             Behavior on border.color { ColorAnimation { duration: 180 } }
 
@@ -1443,8 +1757,10 @@ PanelWindow {
                                                     Rectangle {
                                                         width: 52; height: 24; radius: 12
                                                         anchors.verticalCenter: parent.verticalCenter
+                                                        property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 1
                                                         color: root.wallpaperColorMode === "dark" ? (root.activeColorPreset === modelData.id ? Theme.bg : Theme.surface) : Theme.yellow
-                                                        border.color: Theme.surface1
+                                                        border.color: kbdFocused ? Theme.accent : Theme.surface1
+                                                        border.width: kbdFocused ? 2 : 1
                                                         Text {
                                                             anchors.centerIn: parent
                                                             text: root.wallpaperColorMode === "dark" ? "Dark" : "Light"
@@ -1493,12 +1809,14 @@ PanelWindow {
 
                                         delegate: Rectangle {
                                             required property var modelData
+                                            required property int index
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: 58
                                             radius: 12
+                                            property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === index + 2
                                             color: root.activeColorPreset === modelData.id ? Theme.accent : (cpdMouse.containsMouse ? Theme.surface : Theme.surface1)
-                                            border.color: root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface
-                                            border.width: 1
+                                            border.color: kbdFocused ? Theme.accent2 : (root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface)
+                                            border.width: kbdFocused ? 2 : 1
                                             Behavior on color { ColorAnimation { duration: 180 } }
                                             Behavior on border.color { ColorAnimation { duration: 180 } }
 
@@ -1607,12 +1925,15 @@ PanelWindow {
 
                                         delegate: Rectangle {
                                             required property var modelData
+                                            required property int index
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: 58
                                             radius: 12
+                                            property int kbdOffset: 2 + root.colorPresetsByMode("dark").length
+                                            property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === index + kbdOffset
                                             color: root.activeColorPreset === modelData.id ? Theme.accent : (cplMouse.containsMouse ? Theme.surface : Theme.surface1)
-                                            border.color: root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface
-                                            border.width: 1
+                                            border.color: kbdFocused ? Theme.accent2 : (root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface)
+                                            border.width: kbdFocused ? 2 : 1
                                             Behavior on color { ColorAnimation { duration: 180 } }
                                             Behavior on border.color { ColorAnimation { duration: 180 } }
 
