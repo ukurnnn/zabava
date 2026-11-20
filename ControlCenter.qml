@@ -2036,134 +2036,243 @@ PanelWindow {
 
                                 Text {
                                     width: parent.width
-                                    text: "Порядок, секция и видимость модулей. Изменения применяются сразу."
+                                    text: "Расположение как на баре: слева, центр, справа. Меняйте секцию, порядок и видимость — изменения применяются сразу."
                                     color: Theme.fgMuted
                                     font.family: "JetBrainsMono Nerd Font"
                                     font.pixelSize: 10
                                     wrapMode: Text.WordWrap
                                 }
 
-                                Repeater {
-                                    model: [
-                                        { id: "left", title: "Слева", icon: "󰉢" },
-                                        { id: "center", title: "Центр", icon: "󰘞" },
-                                        { id: "right", title: "Справа", icon: "󰉣" }
-                                    ]
-                                    delegate: Rectangle {
-                                        required property var modelData
-                                        width: barCol.width
-                                        radius: 12
-                                        color: Theme.surface
-                                        border.color: Theme.surface1
-                                        implicitHeight: secCol.implicitHeight + 16
+                                Rectangle {
+                                    width: parent.width
+                                    radius: 12
+                                    color: Theme.bg
+                                    border.color: Theme.surface1
+                                    implicitHeight: barPreviewHint.implicitHeight + 16
 
-                                        Column {
-                                            id: secCol
-                                            anchors.fill: parent
-                                            anchors.margins: 8
-                                            spacing: 6
+                                    Text {
+                                        id: barPreviewHint
+                                        anchors.fill: parent
+                                        anchors.margins: 8
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: "󰉢  Слева      ·      󰘞  Центр      ·      󰉣  Справа"
+                                        color: Theme.fgMuted
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 11
+                                        elide: Text.ElideRight
+                                    }
+                                }
 
-                                            Row {
-                                                width: parent.width
+                                Row {
+                                    id: modulesBoard
+                                    width: parent.width
+                                    spacing: 8
+
+                                    Repeater {
+                                        model: [
+                                            { id: "left", title: "Слева", icon: "󰉢" },
+                                            { id: "center", title: "Центр", icon: "󰘞" },
+                                            { id: "right", title: "Справа", icon: "󰉣" }
+                                        ]
+
+                                        delegate: Rectangle {
+                                            id: sectionCard
+                                            required property var modelData
+                                            property string sectionId: modelData.id
+                                            width: (modulesBoard.width - 16) / 3
+                                            radius: 12
+                                            color: Theme.surface
+                                            border.color: Theme.surface1
+                                            border.width: 1
+                                            implicitHeight: secInner.implicitHeight + 16
+
+                                            Column {
+                                                id: secInner
+                                                anchors.left: parent.left
+                                                anchors.right: parent.right
+                                                anchors.top: parent.top
+                                                anchors.margins: 8
                                                 spacing: 8
-                                                Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.icon; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
-                                                Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.title; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
-                                            }
 
-                                            Repeater {
-                                                model: {
-                                                    var _o = BarConfig.moduleOrder
-                                                    var _h = BarConfig.hiddenModules
-                                                    return ((BarConfig.moduleOrder && BarConfig.moduleOrder[modelData.id]) ? BarConfig.moduleOrder[modelData.id] : []).slice()
-                                                }
-                                                delegate: Rectangle {
-                                                    required property var modelData
-                                                    required property int index
-                                                    property string sectionId: parent ? parent.parent.parent.modelData.id : ""
-                                                    width: secCol.width
-                                                    height: 38
+                                                Rectangle {
+                                                    width: parent.width
+                                                    height: 30
                                                     radius: 8
-                                                    color: modMouse.containsMouse ? Theme.surface1 : Theme.bg
-                                                    border.color: Theme.surface1
-                                                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                                                    property bool isHidden: BarConfig.isModuleHidden(modelData)
-                                                    property var meta: BarConfig.moduleMeta[modelData] || ({ name: modelData, icon: "󰘔" })
-
-                                                    MouseArea { id: modMouse; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
+                                                    color: Theme.surface1
 
                                                     Row {
-                                                        anchors.fill: parent
-                                                        anchors.leftMargin: 8
-                                                        anchors.rightMargin: 6
+                                                        anchors.centerIn: parent
                                                         spacing: 6
+                                                        Text { text: sectionCard.modelData.icon; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
+                                                        Text { text: sectionCard.modelData.title; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
+                                                    }
+                                                }
 
-                                                        Text {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            text: meta.icon
-                                                            color: isHidden ? Theme.fgMuted : Theme.fg
-                                                            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13
-                                                            opacity: isHidden ? 0.5 : 1
-                                                        }
-                                                        Text {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            width: Math.max(60, parent.width - 210)
-                                                            text: meta.name
-                                                            color: isHidden ? Theme.fgMuted : Theme.fg
-                                                            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
-                                                            elide: Text.ElideRight
-                                                            opacity: isHidden ? 0.6 : 1
-                                                        }
+                                                Repeater {
+                                                    model: {
+                                                        var _o = BarConfig.moduleOrder
+                                                        var _h = BarConfig.hiddenModules
+                                                        return ((BarConfig.moduleOrder && BarConfig.moduleOrder[sectionCard.sectionId]) ? BarConfig.moduleOrder[sectionCard.sectionId] : []).slice()
+                                                    }
 
-                                                        Rectangle {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            width: 26; height: 26; radius: 6
-                                                            color: visBtn.containsMouse ? Theme.surface : "transparent"
-                                                            Text { anchors.centerIn: parent; text: isHidden ? "󰈉" : "󰈈"; color: isHidden ? Theme.fgMuted : Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
-                                                            MouseArea { id: visBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BarConfig.setModuleHidden(modelData, !isHidden) }
-                                                        }
-                                                        Rectangle {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            width: 26; height: 26; radius: 6
-                                                            color: upBtn.containsMouse ? Theme.surface : "transparent"
-                                                            opacity: index > 0 ? 1 : 0.35
-                                                            Text { anchors.centerIn: parent; text: "󰁝"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
-                                                            MouseArea { id: upBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: index > 0; onClicked: BarConfig.moveModule(modelData, -1) }
-                                                        }
-                                                        Rectangle {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            width: 26; height: 26; radius: 6
-                                                            color: downBtn.containsMouse ? Theme.surface : "transparent"
-                                                            property int secLen: ((BarConfig.moduleOrder && BarConfig.moduleOrder[sectionId]) ? BarConfig.moduleOrder[sectionId].length : 0)
-                                                            opacity: index < secLen - 1 ? 1 : 0.35
-                                                            Text { anchors.centerIn: parent; text: "󰁅"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
-                                                            MouseArea { id: downBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: index < parent.secLen - 1; onClicked: BarConfig.moveModule(modelData, 1) }
-                                                        }
-                                                        Rectangle {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            width: 26; height: 26; radius: 6
-                                                            visible: sectionId !== "left"
-                                                            color: toLeftBtn.containsMouse ? Theme.surface : "transparent"
-                                                            Text { anchors.centerIn: parent; text: "󰉢"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-                                                            MouseArea { id: toLeftBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BarConfig.moveModuleToSection(modelData, "left") }
-                                                        }
-                                                        Rectangle {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            width: 26; height: 26; radius: 6
-                                                            visible: sectionId !== "center"
-                                                            color: toCenterBtn.containsMouse ? Theme.surface : "transparent"
-                                                            Text { anchors.centerIn: parent; text: "󰘞"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-                                                            MouseArea { id: toCenterBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BarConfig.moveModuleToSection(modelData, "center") }
-                                                        }
-                                                        Rectangle {
-                                                            anchors.verticalCenter: parent.verticalCenter
-                                                            width: 26; height: 26; radius: 6
-                                                            visible: sectionId !== "right"
-                                                            color: toRightBtn.containsMouse ? Theme.surface : "transparent"
-                                                            Text { anchors.centerIn: parent; text: "󰉣"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-                                                            MouseArea { id: toRightBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BarConfig.moveModuleToSection(modelData, "right") }
+                                                    delegate: Rectangle {
+                                                        id: moduleCard
+                                                        required property var modelData
+                                                        required property int index
+                                                        property string moduleId: modelData
+                                                        property string sectionId: sectionCard.sectionId
+                                                        width: secInner.width
+                                                        radius: 10
+                                                        color: Theme.bg
+                                                        border.color: Theme.surface1
+                                                        border.width: 1
+                                                        implicitHeight: modCol.implicitHeight + 14
+                                                        opacity: BarConfig.isModuleHidden(moduleId) ? 0.72 : 1
+                                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+
+                                                        property var meta: BarConfig.moduleMeta[moduleId] || ({ name: moduleId, icon: "󰘔" })
+                                                        property bool isHidden: BarConfig.isModuleHidden(moduleId)
+                                                        property int secLen: ((BarConfig.moduleOrder && BarConfig.moduleOrder[sectionId]) ? BarConfig.moduleOrder[sectionId].length : 0)
+
+                                                        Column {
+                                                            id: modCol
+                                                            anchors.left: parent.left
+                                                            anchors.right: parent.right
+                                                            anchors.top: parent.top
+                                                            anchors.margins: 7
+                                                            spacing: 6
+
+                                                            Row {
+                                                                width: parent.width
+                                                                spacing: 6
+
+                                                                Rectangle {
+                                                                    width: 28; height: 28; radius: 7
+                                                                    anchors.verticalCenter: parent.verticalCenter
+                                                                    color: visMouse.containsMouse ? Theme.surface : Theme.surface1
+                                                                    border.color: isHidden ? Theme.fgMuted : Theme.accent
+                                                                    border.width: 1
+                                                                    Text {
+                                                                        anchors.centerIn: parent
+                                                                        text: isHidden ? "󰈉" : "󰈈"
+                                                                        color: isHidden ? Theme.fgMuted : Theme.accent
+                                                                        font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13
+                                                                    }
+                                                                    MouseArea {
+                                                                        id: visMouse
+                                                                        anchors.fill: parent
+                                                                        hoverEnabled: true
+                                                                        cursorShape: Qt.PointingHandCursor
+                                                                        onClicked: BarConfig.setModuleHidden(moduleId, !isHidden)
+                                                                    }
+                                                                }
+
+                                                                Text {
+                                                                    anchors.verticalCenter: parent.verticalCenter
+                                                                    text: moduleCard.meta.icon
+                                                                    color: isHidden ? Theme.fgMuted : Theme.fg
+                                                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13
+                                                                }
+
+                                                                Text {
+                                                                    anchors.verticalCenter: parent.verticalCenter
+                                                                    width: Math.max(20, parent.width - 108)
+                                                                    text: moduleCard.meta.name
+                                                                    color: isHidden ? Theme.fgMuted : Theme.fg
+                                                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
+                                                                    elide: Text.ElideRight
+                                                                }
+
+                                                                Rectangle {
+                                                                    width: 26; height: 26; radius: 6
+                                                                    anchors.verticalCenter: parent.verticalCenter
+                                                                    color: upMouse.containsMouse ? Theme.surface : "transparent"
+                                                                    opacity: index > 0 ? 1 : 0.35
+                                                                    Text { anchors.centerIn: parent; text: "󰁝"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+                                                                    MouseArea {
+                                                                        id: upMouse; anchors.fill: parent; hoverEnabled: true
+                                                                        cursorShape: index > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                                                        enabled: index > 0
+                                                                        onClicked: BarConfig.moveModule(moduleId, -1)
+                                                                    }
+                                                                }
+
+                                                                Rectangle {
+                                                                    width: 26; height: 26; radius: 6
+                                                                    anchors.verticalCenter: parent.verticalCenter
+                                                                    color: downMouse.containsMouse ? Theme.surface : "transparent"
+                                                                    opacity: index < moduleCard.secLen - 1 ? 1 : 0.35
+                                                                    Text { anchors.centerIn: parent; text: "󰁅"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+                                                                    MouseArea {
+                                                                        id: downMouse; anchors.fill: parent; hoverEnabled: true
+                                                                        cursorShape: index < moduleCard.secLen - 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                                                        enabled: index < moduleCard.secLen - 1
+                                                                        onClicked: BarConfig.moveModule(moduleId, 1)
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            Row {
+                                                                width: parent.width
+                                                                spacing: 4
+
+                                                                Repeater {
+                                                                    model: [
+                                                                        { id: "left", icon: "󰉢", label: "Слева" },
+                                                                        { id: "center", icon: "󰘞", label: "Центр" },
+                                                                        { id: "right", icon: "󰉣", label: "Справа" }
+                                                                    ]
+                                                                    delegate: Rectangle {
+                                                                        required property var modelData
+                                                                        width: (modCol.width - 8) / 3
+                                                                        height: 24
+                                                                        radius: 6
+                                                                        property bool active: moduleCard.sectionId === modelData.id
+                                                                        color: active ? Theme.accent : (secBtnMouse.containsMouse ? Theme.surface : Theme.surface1)
+                                                                        border.color: active ? Theme.accent : Theme.surface1
+                                                                        Behavior on color { ColorAnimation { duration: 120 } }
+
+                                                                        Row {
+                                                                            anchors.centerIn: parent
+                                                                            spacing: 4
+                                                                            Text { text: modelData.icon; color: active ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                                            Text { text: modelData.label; color: active ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9; elide: Text.ElideRight }
+                                                                        }
+
+                                                                        MouseArea {
+                                                                            id: secBtnMouse
+                                                                            anchors.fill: parent
+                                                                            hoverEnabled: true
+                                                                            cursorShape: Qt.PointingHandCursor
+                                                                            onClicked: {
+                                                                                if (!active) BarConfig.moveModuleToSection(moduleId, modelData.id)
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            Text {
+                                                                visible: isHidden
+                                                                text: "Скрыт на баре"
+                                                                color: Theme.fgMuted
+                                                                font.family: "JetBrainsMono Nerd Font"
+                                                                font.pixelSize: 9
+                                                            }
                                                         }
                                                     }
+                                                }
+
+                                                Text {
+                                                    width: parent.width
+                                                    visible: ((BarConfig.moduleOrder && BarConfig.moduleOrder[sectionCard.sectionId]) ? BarConfig.moduleOrder[sectionCard.sectionId].length : 0) === 0
+                                                    text: "Нет модулей"
+                                                    color: Theme.fgMuted
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 10
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    topPadding: 6
+                                                    bottomPadding: 6
                                                 }
                                             }
                                         }
