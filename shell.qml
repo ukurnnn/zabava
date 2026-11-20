@@ -124,10 +124,13 @@ ShellRoot {
             visible: opacity > 0
             z: -1
 
+            Behavior on x { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+            Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on radius { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.InOutQuad } }
         }
@@ -143,6 +146,8 @@ ShellRoot {
             width: wsRow.implicitWidth + (BarConfig.style === "full" ? 32 : 20)
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -198,6 +203,8 @@ ShellRoot {
             width: mprisContent.implicitWidth + 28 + (cavaRow.active ? cavaRow.implicitWidth + 10 : 0)
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -235,6 +242,8 @@ ShellRoot {
             width: centerRow.implicitWidth + 24
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -323,6 +332,8 @@ ShellRoot {
             width: powerRow.implicitWidth + (BarConfig.style === "full" ? 32 : 20)
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -349,6 +360,8 @@ ShellRoot {
             width: trayRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -375,6 +388,8 @@ ShellRoot {
             width: netRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -401,6 +416,8 @@ ShellRoot {
             width: layoutRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -426,6 +443,8 @@ ShellRoot {
             width: sysRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -451,6 +470,8 @@ ShellRoot {
             width: volRow.implicitWidth + 20
             radius: BarConfig.style === "full" ? 14 : 20
             color: BarConfig.style === "islands" ? Theme.bg : "transparent"
+            Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.rightMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }

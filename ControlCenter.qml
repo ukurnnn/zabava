@@ -127,6 +127,7 @@ PanelWindow {
     readonly property var pages: [
         { id: "network", icon: "󰖩", label: "Сеть" },
         { id: "audio", icon: "󰕾", label: "Звук" },
+        { id: "display", icon: "󰃟", label: "Дисплей" },
         { id: "notifications", icon: "󰂚", label: "Уведомления" },
         { id: "bar", icon: "󰕰", label: "Бар" },
         { id: "colors", icon: "󰏘", label: "Цвета" },
@@ -164,6 +165,7 @@ PanelWindow {
     function contentCount(pageId) {
         if (pageId === "network") return netItemCount()
         if (pageId === "audio") return audioItemCount()
+        if (pageId === "display") return 1
         if (pageId === "notifications") return notifItemCount()
         if (pageId === "bar") return barItemCount()
         if (pageId === "colors") return colorsItemCount()
@@ -1551,51 +1553,6 @@ PanelWindow {
                                     }
                                 }
 
-                                Rectangle {
-                                    width: parent.width
-                                    radius: 12
-                                    color: Theme.surface
-                                    implicitHeight: brightCol.implicitHeight + 20
-                                    visible: BrightnessService.available || BrightnessService.ready
-                                    Column {
-                                        id: brightCol
-                                        anchors.fill: parent; anchors.margins: 10; spacing: 8
-                                        Row {
-                                            width: parent.width; spacing: 8
-                                            Text {
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                text: BrightnessService.percent >= 67 ? "󰃠" : (BrightnessService.percent >= 34 ? "󰃟" : "󰃞")
-                                                color: Theme.yellow
-                                                font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16
-                                            }
-                                            Column {
-                                                width: parent.width - 70; spacing: 2
-                                                Text { width: parent.width; text: "Яркость"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; elide: Text.ElideRight }
-                                                Text { text: BrightnessService.available ? (BrightnessService.device || "backlight") : "Не найдено устройство подсветки"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; elide: Text.ElideRight }
-                                            }
-                                            Text { anchors.verticalCenter: parent.verticalCenter; text: BrightnessService.available ? (BrightnessService.percent + "%") : "--"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-                                        }
-                                        Item {
-                                            width: parent.width; height: 18
-                                            visible: BrightnessService.available
-                                            Rectangle {
-                                                anchors.verticalCenter: parent.verticalCenter; width: parent.width; height: 6; radius: 3; color: Theme.bg
-                                                Rectangle {
-                                                    width: parent.width * Math.max(0, Math.min(1, BrightnessService.percent / 100))
-                                                    height: parent.height; radius: 3; color: Theme.yellow
-                                                    Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
-                                                }
-                                            }
-                                            MouseArea {
-                                                anchors.fill: parent; anchors.margins: -4; cursorShape: Qt.PointingHandCursor
-                                                enabled: BrightnessService.available
-                                                onPressed: (mouse) => { var p = Math.round(Math.max(0, Math.min(1, mouse.x / width)) * 100); BrightnessService.setPercent(p); if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p }) }
-                                                onPositionChanged: (mouse) => { if (pressed) { var p = Math.round(Math.max(0, Math.min(1, mouse.x / width)) * 100); BrightnessService.setPercent(p); if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p }) } }
-                                                onWheel: (wheel) => { var step = wheel.angleDelta.y > 0 ? 5 : -5; var p = Math.max(0, Math.min(100, BrightnessService.percent + step)); BrightnessService.setPercent(p); if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p }) }
-                                            }
-                                        }
-                                    }
-                                }
 
                                 Rectangle {
                                     width: parent.width; height: 36; radius: 10
@@ -1608,6 +1565,159 @@ PanelWindow {
                                 }
                             }
                         }
+                        Flickable {
+                            id: pageDisplay
+                            anchors.fill: parent
+                            opacity: root.currentPage === "display" ? 1 : 0
+                            visible: opacity > 0
+                            transform: Translate { x: root.currentPage === "display" ? 0 : 12 }
+                            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.InOutQuad } }
+                            clip: true
+                            contentWidth: width
+                            contentHeight: displayCol.implicitHeight
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            Column {
+                                id: displayCol
+                                width: parent.width
+                                spacing: 12
+
+                                Rectangle {
+                                    width: parent.width
+                                    radius: 14
+                                    color: Theme.surface
+                                    border.color: Theme.surface1
+                                    border.width: 1
+                                    implicitHeight: brightPageCol.implicitHeight + 24
+
+                                    Column {
+                                        id: brightPageCol
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: 12
+
+                                        Row {
+                                            width: parent.width
+                                            spacing: 10
+
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: BrightnessService.percent >= 67 ? "󰃠" : (BrightnessService.percent >= 34 ? "󰃟" : "󰃞")
+                                                color: BrightnessService.available ? Theme.yellow : Theme.fgMuted
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 20
+                                            }
+
+                                            Column {
+                                                width: parent.width - 130
+                                                spacing: 2
+                                                Text { text: "Яркость экрана"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; font.bold: true }
+                                                Text {
+                                                    text: BrightnessService.available ? ("Устройство: " + (BrightnessService.device || "backlight")) : (BrightnessService.ready ? "Устройство подсветки не найдено" : "Определение устройства...")
+                                                    color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; wrapMode: Text.WordWrap; width: parent.width
+                                                }
+                                            }
+
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 70
+                                                horizontalAlignment: Text.AlignRight
+                                                text: BrightnessService.available ? BrightnessService.percent + "%" : "--"
+                                                color: Theme.fg
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 14
+                                                font.bold: true
+                                            }
+                                        }
+
+                                        Item {
+                                            width: parent.width
+                                            height: 22
+                                            visible: BrightnessService.available
+                                            opacity: BrightnessService.available ? 1 : 0.5
+
+                                            Rectangle {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: parent.width
+                                                height: 8
+                                                radius: 4
+                                                color: Theme.bg
+                                                border.color: Theme.surface1
+
+                                                Rectangle {
+                                                    width: parent.width * Math.max(0, Math.min(1, BrightnessService.percent / 100))
+                                                    height: parent.height
+                                                    radius: 4
+                                                    color: Theme.yellow
+                                                    Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+                                                }
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                anchors.margins: -4
+                                                cursorShape: BrightnessService.available ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                                enabled: BrightnessService.available
+                                                function updateFromX(x) {
+                                                    var p = Math.round(Math.max(0, Math.min(1, x / width)) * 100)
+                                                    BrightnessService.setPercent(p)
+                                                    if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p })
+                                                }
+                                                onPressed: (mouse) => updateFromX(mouse.x)
+                                                onPositionChanged: (mouse) => { if (pressed) updateFromX(mouse.x) }
+                                                onWheel: (wheel) => {
+                                                    var step = wheel.angleDelta.y > 0 ? 5 : -5
+                                                    var p = Math.max(0, Math.min(100, BrightnessService.percent + step))
+                                                    BrightnessService.setPercent(p)
+                                                    if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + p + "%", value: p })
+                                                }
+                                            }
+                                        }
+
+                                        Row {
+                                            width: parent.width
+                                            spacing: 8
+                                            visible: BrightnessService.available
+
+                                            Repeater {
+                                                model: [0, 25, 50, 75, 100]
+                                                delegate: Rectangle {
+                                                    required property var modelData
+                                                    width: (brightPageCol.width - 32) / 5
+                                                    height: 30
+                                                    radius: 8
+                                                    color: stepMouse.containsMouse ? Theme.surface1 : (BrightnessService.percent === modelData ? Theme.accent : Theme.bg)
+                                                    border.color: BrightnessService.percent === modelData ? Theme.accent : Theme.surface1
+                                                    Behavior on color { ColorAnimation { duration: 120 } }
+                                                    Text { anchors.centerIn: parent; text: modelData + "%"; color: BrightnessService.percent === modelData ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                    MouseArea {
+                                                        id: stepMouse
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: {
+                                                            BrightnessService.setPercent(modelData)
+                                                            if (root.osd) root.osd.showOsd({ icon: "󰃟", label: "Яркость: " + modelData + "%", value: modelData })
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Text {
+                                            width: parent.width
+                                            visible: !BrightnessService.available
+                                            text: "Управление яркостью недоступно: не найден brightnessctl / sysfs backlight. Функции звука и другие настройки работают как обычно."
+                                            color: Theme.fgMuted
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 11
+                                            wrapMode: Text.WordWrap
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         ColumnLayout {
                             anchors.fill: parent
                             visible: root.currentPage === "notifications"
