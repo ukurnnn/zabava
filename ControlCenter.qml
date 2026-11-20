@@ -160,7 +160,7 @@ PanelWindow {
     function audioItemCount() { return 5 + outputNodes().length + inputNodes().length }
     function notifItemCount() { return 2 + (NotificationService.history ? NotificationService.history.count : 0) }
     function barItemCount() { return 3 + BarConfig.allPresets().length + 1 }
-    function colorsItemCount() { return 2 + colorPresetsByMode("dark").length + colorPresetsByMode("light").length }
+    function colorsItemCount() { return 3 + colorPresetsByMode("dark").length + colorPresetsByMode("light").length }
 
     function contentCount(pageId) {
         if (pageId === "network") return netItemCount()
@@ -243,13 +243,16 @@ PanelWindow {
             var dyn = colorPresetsByMode("dynamic")
             var darks = colorPresetsByMode("dark")
             var lights = colorPresetsByMode("light")
-            if (idx === 0 && dyn.length > 0) applyColorPreset(dyn[0])
-            else if (idx === 1) {
+            if (idx === 0) {
+                Theme.setGlassEnabled(!Theme.glassEnabled)
+            } else if (idx === 1 && dyn.length > 0) {
+                applyColorPreset(dyn[0])
+            } else if (idx === 2) {
                 wallpaperColorMode = (wallpaperColorMode === "dark" ? "light" : "dark")
                 saveColorPresets()
                 if (activeColorPreset === "wallpaper" && dyn.length > 0) applyColorPreset(dyn[0])
             } else {
-                var ci = idx - 2
+                var ci = idx - 3
                 if (ci >= 0 && ci < darks.length) applyColorPreset(darks[ci])
                 else if (ci >= darks.length && ci < darks.length + lights.length) applyColorPreset(lights[ci - darks.length])
             }
@@ -889,11 +892,11 @@ PanelWindow {
             } else if (event.key === Qt.Key_Right || event.key === Qt.Key_L) {
                 if (root.currentPage === "network" && idx === 1) idx = 2
                 else if (root.currentPage === "bar" && idx >= 0 && idx < 2) idx = idx + 1
-                else if (root.currentPage === "colors" && idx === 0) idx = 1
-                else if (root.currentPage === "colors" && idx >= 2) {
+                else if (root.currentPage === "colors" && idx >= 0 && idx < 2) idx = idx + 1
+                else if (root.currentPage === "colors" && idx >= 3) {
                     var dc2 = root.colorPresetsByMode("dark").length
                     var lc2 = root.colorPresetsByMode("light").length
-                    var ci2 = idx - 2
+                    var ci2 = idx - 3
                     if (ci2 < dc2) { if (ci2 % 2 === 0 && ci2 + 1 < dc2) idx = idx + 1 }
                     else { var li2 = ci2 - dc2; if (li2 % 2 === 0 && li2 + 1 < lc2) idx = idx + 1 }
                 } else if (root.currentPage === "general" && idx === 0) idx = 1
@@ -913,15 +916,16 @@ PanelWindow {
                     else idx = idx - 1
                 } else if (root.currentPage === "colors") {
                     var dc3 = root.colorPresetsByMode("dark").length
-                    if (idx <= 1) { root.navZone = "sidebar"; event.accepted = true; return }
+                    if (idx <= 0) { root.navZone = "sidebar"; event.accepted = true; return }
+                    else if (idx <= 2) idx = 0
                     else {
-                        var ci3 = idx - 2
+                        var ci3 = idx - 3
                         if (ci3 < dc3) {
-                            if (ci3 < 2) idx = 0
+                            if (ci3 < 2) idx = 1
                             else idx = idx - 2
                         } else {
                             var li3 = ci3 - dc3
-                            if (li3 < 2) idx = 2 + Math.max(0, dc3 - 2 + (li3 % 2))
+                            if (li3 < 2) idx = 3 + Math.max(0, dc3 - 2 + (li3 % 2))
                             else idx = idx - 2
                         }
                     }
@@ -953,12 +957,13 @@ PanelWindow {
                 } else if (root.currentPage === "colors") {
                     var dc4 = root.colorPresetsByMode("dark").length
                     var lc4 = root.colorPresetsByMode("light").length
-                    if (idx <= 1) idx = 2
+                    if (idx === 0) idx = 1
+                    else if (idx <= 2) idx = 3
                     else {
-                        var ci4 = idx - 2
+                        var ci4 = idx - 3
                         if (ci4 < dc4) {
                             if (ci4 + 2 < dc4) idx = idx + 2
-                            else if (lc4 > 0) idx = 2 + dc4 + Math.min(ci4 % 2, lc4 - 1)
+                            else if (lc4 > 0) idx = 3 + dc4 + Math.min(ci4 % 2, lc4 - 1)
                             else idx = idx
                         } else {
                             var li4 = ci4 - dc4
@@ -2415,6 +2420,68 @@ PanelWindow {
                                     }
                                 }
 
+                                Text { text: "Стиль интерфейса"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; font.bold: true }
+
+                                Row {
+                                    width: parent.width
+                                    spacing: 10
+
+                                    Rectangle {
+                                        width: (parent.width - 10) / 2
+                                        height: 76
+                                        radius: 12
+                                        property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 0
+                                        color: Theme.glassEnabled ? Theme.accent : (glassStyleMouse.containsMouse ? Theme.surface : Theme.surface1)
+                                        border.color: kbdFocused ? Theme.accent2 : (Theme.glassEnabled ? Theme.accent : Theme.surface)
+                                        border.width: kbdFocused ? 2 : 1
+                                        Behavior on color { ColorAnimation { duration: 180 } }
+                                        Behavior on border.color { ColorAnimation { duration: 180 } }
+
+                                        Column {
+                                            anchors.centerIn: parent
+                                            spacing: 4
+                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󰂵"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
+                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Жидкое стекло"; color: Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
+                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "прозрачные панели и блики"; color: Theme.glassEnabled ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                        }
+
+                                        MouseArea {
+                                            id: glassStyleMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: Theme.setGlassEnabled(true)
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: (parent.width - 10) / 2
+                                        height: 76
+                                        radius: 12
+                                        color: !Theme.glassEnabled ? Theme.accent : (classicStyleMouse.containsMouse ? Theme.surface : Theme.surface1)
+                                        border.color: !Theme.glassEnabled ? Theme.accent : Theme.surface
+                                        border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 180 } }
+                                        Behavior on border.color { ColorAnimation { duration: 180 } }
+
+                                        Column {
+                                            anchors.centerIn: parent
+                                            spacing: 4
+                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "󰘔"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
+                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Классический"; color: !Theme.glassEnabled ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true }
+                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: "как было раньше"; color: !Theme.glassEnabled ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                        }
+
+                                        MouseArea {
+                                            id: classicStyleMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: Theme.setGlassEnabled(false)
+                                        }
+                                    }
+                                }
+
                                 Text { text: "Matugen (из обоев)"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; font.bold: true }
 
                                 GridLayout {
@@ -2431,7 +2498,7 @@ PanelWindow {
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: 72
                                             radius: 12
-                                            property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 0
+                                            property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 1
                                             color: root.activeColorPreset === modelData.id ? Theme.accent : (dynMouse.containsMouse ? Theme.surface : Theme.surface1)
                                             border.color: kbdFocused ? Theme.accent2 : (root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface)
                                             border.width: kbdFocused ? 2 : 1
@@ -2480,7 +2547,7 @@ PanelWindow {
                                                     Rectangle {
                                                         width: 52; height: 24; radius: 12
                                                         anchors.verticalCenter: parent.verticalCenter
-                                                        property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 1
+                                                        property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === 2
                                                         color: root.wallpaperColorMode === "dark" ? (root.activeColorPreset === modelData.id ? Theme.bg : Theme.surface) : Theme.yellow
                                                         border.color: kbdFocused ? Theme.accent : Theme.surface1
                                                         border.width: kbdFocused ? 2 : 1
@@ -2536,7 +2603,7 @@ PanelWindow {
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: 58
                                             radius: 12
-                                            property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === index + 2
+                                            property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === index + 3
                                             color: root.activeColorPreset === modelData.id ? Theme.accent : (cpdMouse.containsMouse ? Theme.surface : Theme.surface1)
                                             border.color: kbdFocused ? Theme.accent2 : (root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface)
                                             border.width: kbdFocused ? 2 : 1
@@ -2652,7 +2719,7 @@ PanelWindow {
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: 58
                                             radius: 12
-                                            property int kbdOffset: 2 + root.colorPresetsByMode("dark").length
+                                            property int kbdOffset: 3 + root.colorPresetsByMode("dark").length
                                             property bool kbdFocused: root.navZone === "content" && root.currentPage === "colors" && root.contentFocusIndex === index + kbdOffset
                                             color: root.activeColorPreset === modelData.id ? Theme.accent : (cplMouse.containsMouse ? Theme.surface : Theme.surface1)
                                             border.color: kbdFocused ? Theme.accent2 : (root.activeColorPreset === modelData.id ? Theme.accent : Theme.surface)
@@ -2736,7 +2803,7 @@ PanelWindow {
 
                                         Text {
                                             width: parent.width
-                                            text: "«Из обоев» берёт путь из ~/.config/waypaper/config.ini и запускает matugen image (можно переключить dark/light). Stone Trio — кастомная палитра из #949494, #aba884, #6f9eb0 в общем списке тёмных тем."
+                                            text: "«Стиль интерфейса» переключает между классическим видом и жидким стеклом (настройка сохраняется в ui-style.json). «Из обоев» берёт путь из ~/.config/waypaper/config.ini и запускает matugen image (dark/light). Stone Trio — кастомная палитра в тёмных темах."
                                             color: Theme.fgMuted
                                             font.family: "JetBrainsMono Nerd Font"
                                             font.pixelSize: 10

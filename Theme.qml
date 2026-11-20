@@ -64,17 +64,60 @@ Item {
     property color teal:      color("teal")
     property color sky:       color("sky")
 
-    // Liquid glass tokens (derived from matugen palette)
-    property color glassPanel: Qt.rgba(surface.r, surface.g, surface.b, 0.56)
-    property color glassPanelStrong: Qt.rgba(surface.r, surface.g, surface.b, 0.72)
-    property color glassCard: Qt.rgba(surface1.r, surface1.g, surface1.b, 0.34)
-    property color glassCardHover: Qt.rgba(surface1.r, surface1.g, surface1.b, 0.48)
-    property color glassIsland: Qt.rgba(bg.r, bg.g, bg.b, 0.50)
-    property color glassBorder: Qt.rgba(fg.r, fg.g, fg.b, 0.14)
-    property color glassBorderStrong: Qt.rgba(fg.r, fg.g, fg.b, 0.22)
-    property color glassHighlight: Qt.rgba(1, 1, 1, 0.10)
-    property color glassHighlightSoft: Qt.rgba(1, 1, 1, 0.05)
-    property color glassShadow: Qt.rgba(0, 0, 0, 0.20)
+    // Visual style: "glass" | "classic"
+    property bool glassEnabled: true
+    readonly property string uiStylePath: Quickshell.env("HOME") + "/.config/quickshell/ui-style.json"
+
+    FileView {
+        id: uiStyleFile
+        path: root.uiStylePath
+        preload: true
+        watchChanges: true
+        printErrors: false
+
+        onLoaded: {
+            var txt = uiStyleFile.text().trim()
+            if (txt === "") return
+            try {
+                var obj = JSON.parse(txt)
+                if (obj && obj.glassEnabled !== undefined) root.glassEnabled = obj.glassEnabled === true
+            } catch (e) {
+            }
+        }
+        onFileChanged: uiStyleFile.reload()
+    }
+
+    Process {
+        id: uiStyleSaveProc
+        command: ["bash", "-c", "true"]
+        running: false
+    }
+
+    function saveUiStyle() {
+        try {
+            var json = JSON.stringify({ glassEnabled: root.glassEnabled }).replace(/'/g, "'\\''")
+            uiStyleSaveProc.command = ["bash", "-lc", "mkdir -p \"$HOME/.config/quickshell\" && printf '%s' '" + json + "' > " + uiStylePath]
+            uiStyleSaveProc.running = true
+        } catch (e) {
+        }
+    }
+
+    function setGlassEnabled(v) {
+        root.glassEnabled = v === true
+        saveUiStyle()
+    }
+
+    // Liquid glass tokens (derived from matugen palette; fall back to classic solid look)
+    property color glassPanel: root.glassEnabled ? Qt.rgba(surface.r, surface.g, surface.b, 0.44) : bg
+    property color glassPanelStrong: root.glassEnabled ? Qt.rgba(surface.r, surface.g, surface.b, 0.60) : bg
+    property color glassCard: root.glassEnabled ? Qt.rgba(surface1.r, surface1.g, surface1.b, 0.26) : surface
+    property color glassCardHover: root.glassEnabled ? Qt.rgba(surface1.r, surface1.g, surface1.b, 0.40) : surface1
+    property color glassIsland: root.glassEnabled ? Qt.rgba(bg.r, bg.g, bg.b, 0.40) : bg
+    property color glassBorder: root.glassEnabled ? Qt.rgba(fg.r, fg.g, fg.b, 0.12) : "transparent"
+    property color glassBorderStrong: root.glassEnabled ? Qt.rgba(accent2.r, accent2.g, accent2.b, 0.22) : surface1
+    property color glassHighlight: root.glassEnabled ? Qt.rgba(1, 1, 1, 0.14) : "transparent"
+    property color glassHighlightSoft: root.glassEnabled ? Qt.rgba(1, 1, 1, 0.07) : "transparent"
+    property color glassShadow: root.glassEnabled ? Qt.rgba(0, 0, 0, 0.24) : "transparent"
 
     Behavior on bg       { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
     Behavior on surface  { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
