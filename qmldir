@@ -1,0 +1,25 @@
+singleton Theme 1.0 Theme.qml
+singleton NiriService 1.0 NiriService.qml
+singleton NotificationService 1.0 NotificationService.qml
+singleton BarConfig 1.0 BarConfig.qml
+AppLauncher 1.0 AppLauncher.qml
+MprisModule 1.0 MprisModule.qml
+CavaModule 1.0 CavaModule.qml
+SystemMonitorModule 1.0 SystemMonitorModule.qml
+TrayModule 1.0 TrayModule.qml
+VolumeModule 1.0 VolumeModule.qml
+PowerButton 1.0 PowerButton.qml
+PowerMenu 1.0 PowerMenu.qml
+CalendarPopup 1.0 CalendarPopup.qml
+NetworkModule 1.0 NetworkModule.qml
+NotificationPopup 1.0 NotificationPopup.qml
+ClipboardMenu 1.0 ClipboardMenu.qml
+ThemeMenu 1.0 ThemeMenu.qml
+LayoutModule 1.0 LayoutModule.qml
+PlayerPopup 1.0 PlayerPopup.qml
+CaffeineModule 1.0 CaffeineModule.qml
+WeatherModule 1.0 WeatherModule.qml
+CloseHandler 1.0 CloseHandler.qml
+AudioPopup 1.0 AudioPopup.qml
+NetworkPopup 1.0 NetworkPopup.qml
+ControlCenter 1.0 ControlCenter.qml

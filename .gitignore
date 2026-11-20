@@ -1,0 +1,14 @@
+# Editor/temporary
+*.swp
+*.swo
+*~
+.DS_Store
+
+# QML/tooling cache
+*.qmlc
+*.jsc
+.qmlls.ini
+
+# Local runtime/generated state
+usage.json
+matugen-colors.json
