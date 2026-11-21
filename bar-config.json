@@ -1,1 +1,1 @@
-{"style":"monolithic","activePreset":"monolithic","userPresets":{}}
+{"style":"monolithic","activePreset":"monolithic","userPresets":{},"moduleOrder":{"left":["workspaces","mpris"],"center":["clock"],"right":["power","tray","network","layout","sysmon","volume"]},"hiddenModules":[]}

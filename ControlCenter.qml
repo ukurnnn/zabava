@@ -1990,7 +1990,7 @@ PanelWindow {
                                         Text {
                                             width: parent.width
                                             visible: !BrightnessService.available
-                                            text: "Управление яркостью недоступно: не найден brightnessctl / sysfs backlight. Функции звука и другие настройки работают как обычно."
+                                            text: "Управление яркостью недоступно: не найдено поддерживаемое устройство подсветки (backlight/brightnessctl). На внешнем мониторе может потребоваться DDC/CI."
                                             color: Theme.fgMuted
                                             font.family: "JetBrainsMono Nerd Font"
                                             font.pixelSize: 11
