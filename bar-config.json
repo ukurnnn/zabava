@@ -1,1 +1,1 @@
-{"style":"monolithic","activePreset":"monolithic","userPresets":{},"moduleOrder":{"left":["workspaces","mpris"],"center":["clock"],"right":["power","tray","network","layout","sysmon","volume"]},"hiddenModules":[]}
+{"style":"full","activePreset":"full","userPresets":{},"moduleOrder":{"left":["workspaces","mpris"],"center":["clock"],"right":["power","tray","network","layout","sysmon","volume"]},"hiddenModules":[]}
