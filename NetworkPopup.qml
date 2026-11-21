@@ -31,6 +31,34 @@ PopupWindow {
     property bool scanning: false
     property bool wifiEnabled: true
 
+    property double rxBytes: -1
+    property double txBytes: -1
+    property double rxSpeed: 0
+    property double txSpeed: 0
+    property var rxHistory: []
+    property var txHistory: []
+    property int speedSamples: 24
+
+    function formatSpeed(bytesPerSec) {
+        var b = Math.max(0, Number(bytesPerSec) || 0)
+        var units = ["Б/с", "КиБ/с", "МиБ/с", "ГиБ/с"]
+        var i = 0
+        while (b >= 1024 && i < units.length - 1) { b /= 1024; i++ }
+        var digits = i === 0 ? 0 : (b >= 100 ? 0 : (b >= 10 ? 1 : 2))
+        return b.toFixed(digits) + " " + units[i]
+    }
+
+    function pushSpeedSample(rx, tx) {
+        var rxh = (rxHistory || []).slice(- (speedSamples - 1))
+        var txh = (txHistory || []).slice(- (speedSamples - 1))
+        rxh.push(Math.max(0, rx))
+        txh.push(Math.max(0, tx))
+        while (rxh.length < speedSamples) rxh.unshift(0)
+        while (txh.length < speedSamples) txh.unshift(0)
+        rxHistory = rxh
+        txHistory = txh
+    }
+
     IpcHandler {
         target: "networkpopup"
         function toggle(): void { root.visible = !root.visible }
@@ -51,7 +79,12 @@ PopupWindow {
     }
 
     onVisibleChanged: {
-        if (visible) refresh()
+        if (visible) {
+            root.rxBytes = -1; root.txBytes = -1; root.rxSpeed = 0; root.txSpeed = 0
+            root.rxHistory = []; root.txHistory = []
+            refresh()
+            speedProc.running = true
+        }
     }
 
     Process {
@@ -146,6 +179,51 @@ PopupWindow {
         command: ["bash", "-lc", "nmcli radio wifi on"]
         running: false
         onExited: root.refresh()
+    }
+
+    Process {
+        id: speedProc
+        command: ["bash", "-c",
+            "dev=$(nmcli -t -f DEVICE,TYPE,STATE dev status 2>/dev/null | awk -F: '$3==\"connected\"{print $1; exit}'); " +
+            "if [ -z \"$dev\" ]; then dev=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i==\"dev\"){print $(i+1); exit}}'); fi; " +
+            "if [ -n \"$dev\" ] && [ -r \"/sys/class/net/$dev/statistics/rx_bytes\" ]; then " +
+            "  rx=$(cat /sys/class/net/$dev/statistics/rx_bytes 2>/dev/null); " +
+            "  tx=$(cat /sys/class/net/$dev/statistics/tx_bytes 2>/dev/null); " +
+            "  printf '%s\\t%s\\t%s\\n' \"$dev\" \"$rx\" \"$tx\"; " +
+            "fi"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var txt = (this.text || "").trim()
+                if (txt === "") {
+                    root.rxSpeed = 0; root.txSpeed = 0
+                    root.pushSpeedSample(0, 0)
+                    return
+                }
+                var p = txt.split("\t")
+                var dev = p[0] || ""
+                var rx = parseFloat(p[1] || "-1")
+                var tx = parseFloat(p[2] || "-1")
+                if (dev !== "") root.device = dev
+                if (isNaN(rx) || isNaN(tx)) return
+                if (root.rxBytes >= 0 && root.txBytes >= 0) {
+                    root.rxSpeed = Math.max(0, rx - root.rxBytes)
+                    root.txSpeed = Math.max(0, tx - root.txBytes)
+                    root.pushSpeedSample(root.rxSpeed, root.txSpeed)
+                } else {
+                    root.pushSpeedSample(0, 0)
+                }
+                root.rxBytes = rx
+                root.txBytes = tx
+            }
+        }
+    }
+
+    Timer {
+        interval: 1500
+        running: root.visible
+        repeat: true
+        onTriggered: speedProc.running = true
     }
 
     CloseHandler {
@@ -243,7 +321,7 @@ PopupWindow {
                         id: statusCol
                         anchors.fill: parent
                         anchors.margins: 10
-                        spacing: 6
+                        spacing: 8
 
                         Row {
                             width: parent.width
@@ -293,6 +371,112 @@ PopupWindow {
                                     font.pixelSize: 11
                                     elide: Text.ElideRight
                                 }
+                            }
+                        }
+
+                        Rectangle { width: parent.width; height: 1; color: Theme.surface1; visible: root.connType !== "none" }
+
+                        Row {
+                            width: parent.width
+                            spacing: 10
+                            visible: root.connType !== "none"
+
+                            Column {
+                                width: (parent.width - 10) / 2
+                                spacing: 2
+                                Text { text: "󰁅 Загрузка"; color: Theme.green; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                Text { text: root.formatSpeed(root.rxSpeed); color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+                            }
+
+                            Column {
+                                width: (parent.width - 10) / 2
+                                spacing: 2
+                                Text { text: "󰁝 Отдача"; color: Theme.orange; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                Text { text: root.formatSpeed(root.txSpeed); color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+                            }
+                        }
+
+                        Item {
+                            id: speedChart
+                            width: parent.width
+                            height: 74
+                            visible: root.connType !== "none"
+
+                            property var rxData: root.rxHistory || []
+                            property var txData: root.txHistory || []
+                            property real maxVal: {
+                                var m = 1024
+                                for (var i = 0; i < rxData.length; i++) m = Math.max(m, Number(rxData[i] || 0))
+                                for (var j = 0; j < txData.length; j++) m = Math.max(m, Number(txData[j] || 0))
+                                return m
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 8
+                                color: Theme.bg
+                                border.color: Theme.surface1
+                                border.width: 1
+                            }
+
+                            Repeater {
+                                model: 3
+                                delegate: Rectangle {
+                                    required property int index
+                                    width: speedChart.width - 10
+                                    height: 1
+                                    x: 5
+                                    y: 6 + index * ((speedChart.height - 12) / 3)
+                                    color: Theme.surface1
+                                    opacity: 0.7
+                                }
+                            }
+
+                            Canvas {
+                                id: speedCanvas
+                                anchors.fill: parent
+                                anchors.margins: 5
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.clearRect(0, 0, width, height)
+                                    function drawLine(data, color) {
+                                        if (!data || data.length < 2) return
+                                        var maxV = Math.max(1, speedChart.maxVal)
+                                        ctx.strokeStyle = color
+                                        ctx.lineWidth = 1.5
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        for (var i = 0; i < data.length; i++) {
+                                            var x = i * width / Math.max(1, data.length - 1)
+                                            var v = Math.max(0, Number(data[i] || 0))
+                                            var y = height - (v / maxV) * height
+                                            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+                                        }
+                                        ctx.stroke()
+                                    }
+                                    drawLine(speedChart.rxData, Theme.green)
+                                    drawLine(speedChart.txData, Theme.orange)
+                                }
+                                Connections {
+                                    target: root
+                                    function onRxHistoryChanged() { speedCanvas.requestPaint() }
+                                    function onTxHistoryChanged() { speedCanvas.requestPaint() }
+                                }
+                                Connections {
+                                    target: Theme
+                                    function onGreenChanged() { speedCanvas.requestPaint() }
+                                    function onOrangeChanged() { speedCanvas.requestPaint() }
+                                }
+                                Component.onCompleted: requestPaint()
+                            }
+
+                            Row {
+                                anchors.left: parent.left
+                                anchors.bottom: parent.bottom
+                                anchors.margins: 6
+                                spacing: 8
+                                Text { text: "↓"; color: Theme.green; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                Text { text: "↑"; color: Theme.orange; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
                             }
                         }
                     }
