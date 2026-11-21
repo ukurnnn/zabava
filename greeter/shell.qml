@@ -37,7 +37,7 @@ ShellRoot {
             onStreamFinished: {
                 var t = this.text.trim()
                 if (t === "") return
-                try { root.mat = JSON.parse(t) } catch (e) { console.log("matugen parse:", e) }
+                try { root.mat = JSON.parse(t) } catch (e) {}
             }
         }
     }

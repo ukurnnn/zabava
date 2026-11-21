@@ -24,7 +24,6 @@ Item {
                     list.sort((a, b) => a.idx - b.idx)
                     root.allWorkspaces = list
                 } catch (e) {
-                    console.log("INITIAL PARSE ERROR:", e)
                 }
             }
         }
@@ -66,7 +65,6 @@ Item {
         }
 
         onExited: (code, status) => {
-            console.log("Niri event-stream exited:", code)
             restartTimer.running = true
         }
     }

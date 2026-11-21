@@ -28,7 +28,6 @@ PanelWindow {
     property string searchText: ""
     property int maxSearchResults: 8
     property string mode: "apps"
-    property string modeHint: ""
     property var usageTimestamps: ({})
 
     readonly property string usageFile: Quickshell.env("HOME") + "/.config/quickshell/usage.json"
@@ -238,7 +237,7 @@ PanelWindow {
         var t = query
 
         if (t.startsWith(">")) {
-            mode = "command"; modeHint = "Команда"
+            mode = "command"
             var cmd = t.substring(1).trim()
             displayItems = cmd.length === 0
                 ? [{ type: "info", icon: "󰆍", title: "Команда", subtitle: "> команда" }]
@@ -248,7 +247,7 @@ PanelWindow {
         }
 
         if (t.startsWith("=")) {
-            mode = "calc"; modeHint = "Калькулятор"
+            mode = "calc"
             var expr = t.substring(1).trim()
             if (expr.length === 0) {
                 displayItems = [{ type: "info", icon: "󰃬", title: "Калькулятор", subtitle: "= выражение" }]
@@ -272,7 +271,7 @@ PanelWindow {
             return
         }
 
-        mode = "apps"; modeHint = ""
+        mode = "apps"
         displayItems = appResults(query)
         resultsList.currentIndex = 0
     }
@@ -539,7 +538,6 @@ PanelWindow {
     onVisibleChanged: {
         if (visible) {
             mode = "apps"
-            modeHint = ""
             searchField.text = ""
             launcher.filterApps("")
             resultsList.currentIndex = 0
@@ -547,7 +545,6 @@ PanelWindow {
             loadUsage()
         } else {
             mode = "apps"
-            modeHint = ""
         }
     }
 }
