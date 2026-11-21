@@ -34,7 +34,10 @@ PanelWindow {
 
     property var blacklist: [
         "avahi", "bssh", "bvnc", "qv4l2", "qvidcap",
-        "kdeconnect", "xterm", "uxterm", "htop"
+        "kdeconnect", "xterm", "uxterm", "htop",
+        "java", "openjdk", "jconsole", "jshell",
+        "qdbusviewer", "linguist", "designer", "assistant",
+        "pinentry-qt"
     ]
 
     Component.onCompleted: { loadUsage() }
