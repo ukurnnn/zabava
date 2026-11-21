@@ -467,7 +467,13 @@ PanelWindow {
                         Behavior on border.color { ColorAnimation { duration: 120 } }
 
                         property bool isApp: modelData.type === "app" && modelData.app
-                        property string iconSource: (isApp && modelData.app.icon) ? Quickshell.iconPath(modelData.app.icon) : ""
+                        property string iconName: isApp ? String(modelData.app.icon || "") : ""
+                        property string iconSource: {
+                            if (!isApp || iconName === "") return ""
+                            if (iconName.indexOf("/") !== -1 || iconName.indexOf("file://") === 0)
+                                return iconName.indexOf("file://") === 0 ? iconName : ("file://" + iconName)
+                            return Quickshell.iconPath(iconName, "application-x-executable")
+                        }
                         property string glyph: {
                             if (!isApp && modelData.icon) return modelData.icon
                             if (isApp) return "󰣆"
@@ -484,10 +490,20 @@ PanelWindow {
                                 Layout.preferredWidth: 22
                                 Layout.preferredHeight: 22
                                 Layout.alignment: Qt.AlignVCenter
-                                IconImage { anchors.fill: parent; source: iconSource; visible: iconSource !== "" }
+                                IconImage {
+                                    id: appIcon
+                                    anchors.fill: parent
+                                    source: iconSource
+                                    visible: iconSource !== "" && status !== Image.Error
+                                    asynchronous: true
+                                    mipmap: true
+                                    smooth: true
+                                    sourceSize.width: 44
+                                    sourceSize.height: 44
+                                }
                                 Text {
                                     anchors.centerIn: parent
-                                    visible: iconSource === ""
+                                    visible: iconSource === "" || appIcon.status === Image.Error
                                     text: glyph
                                     color: index === resultsList.currentIndex ? Theme.bg : Theme.fg
                                     font.family: "JetBrainsMono Nerd Font"
