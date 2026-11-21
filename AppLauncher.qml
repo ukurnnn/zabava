@@ -498,8 +498,6 @@ PanelWindow {
                                     asynchronous: true
                                     mipmap: true
                                     smooth: true
-                                    sourceSize.width: 44
-                                    sourceSize.height: 44
                                 }
                                 Text {
                                     anchors.centerIn: parent
