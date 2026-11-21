@@ -14,6 +14,13 @@ Item {
     property string current: ""
     property var profiles: []
     property bool busy: false
+    property string statusMessage: ""
+
+    function backendLabel() {
+        if (backend === "powerprofilesctl") return "powerprofilesctl"
+        if (backend === "governor") return "cpufreq governor"
+        return backend || "не найден"
+    }
 
     function labelFor(p) {
         if (p === "power-saver") return "Экономия"
@@ -93,6 +100,7 @@ Item {
                     root.backend = ""
                     root.current = ""
                     root.profiles = []
+                    root.statusMessage = "Профили питания недоступны (нет powerprofilesctl и cpufreq)"
                     return
                 }
                 var p = txt.split("\t")
@@ -106,6 +114,11 @@ Item {
                 }
                 root.profiles = out
                 root.available = root.backend !== "" && out.length > 0
+                if (root.available) {
+                    root.statusMessage = "Backend: " + root.backendLabel() + (root.backend === "governor" ? " (может потребоваться pkexec)" : "")
+                } else {
+                    root.statusMessage = "Профили питания недоступны"
+                }
             }
         }
     }

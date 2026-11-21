@@ -203,7 +203,7 @@ PanelWindow {
                 // Если пусто
                 Text {
                     anchors.centerIn: parent
-                    visible: NotificationService.history.count === 0
+                    visible: NotificationService.history.length === 0
                     text: "Нет уведомлений"
                     color: "#6c7086"
                     font.family: "JetBrainsMono Nerd Font"

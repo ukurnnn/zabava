@@ -27,3 +27,4 @@ AudioPopup 1.0 AudioPopup.qml
 NetworkPopup 1.0 NetworkPopup.qml
 ControlCenter 1.0 ControlCenter.qml
 Osd 1.0 Osd.qml
+singleton BluetoothService 1.0 BluetoothService.qml

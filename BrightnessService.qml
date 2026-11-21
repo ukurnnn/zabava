@@ -18,6 +18,11 @@ Item {
     property int percent: maximum > 0 ? Math.round(current * 100 / maximum) : 0
     property bool ready: false
 
+    property bool ddcutilInstalled: false
+    property bool i2cPresent: false
+    property var ddcMonitors: []
+    property string statusMessage: ""
+
     function refresh() {
         detectProc.running = true
     }
@@ -33,7 +38,8 @@ Item {
         } else if (backend === "light") {
             cmd = "light -G 2>/dev/null"
         } else if (backend === "ddcutil") {
-            cmd = "ddcutil getvcp 10 --brief 2>/dev/null | awk '{print $4}'"
+            var disp = devicePath !== "" ? " --bus " + devicePath : ""
+            cmd = "ddcutil" + disp + " getvcp 10 --brief 2>/dev/null | awk '{print $4}'"
         }
         readProc.command = ["bash", "-lc", cmd]
         readProc.running = true
@@ -54,7 +60,8 @@ Item {
         } else if (backend === "light") {
             cmd = "if command -v light >/dev/null 2>&1; then light -S " + target + "; fi"
         } else if (backend === "ddcutil") {
-            cmd = "if command -v ddcutil >/dev/null 2>&1; then ddcutil setvcp 10 " + val + "; fi"
+            var dispSet = devicePath !== "" ? " --bus " + devicePath : ""
+            cmd = "if command -v ddcutil >/dev/null 2>&1; then ddcutil" + dispSet + " setvcp 10 " + val + "; fi"
         }
         setProc.command = ["bash", "-lc", cmd]
         setProc.running = true
@@ -65,12 +72,23 @@ Item {
         setPercent(percent + deltaPercent)
     }
 
+    function statusText() {
+        if (available) return "Устройство: " + (device || backend || "backlight")
+        if (!ready) return "Определение устройства..."
+        if (ddcutilInstalled && !i2cPresent) return "DDC/CI: ddcutil установлен, но нет /dev/i2c-* (нужен i2c-dev и права/перезагрузка)"
+        if (ddcutilInstalled && i2cPresent && ddcMonitors.length === 0) return "DDC/CI: ddcutil и i2c есть, но мониторы не обнаружены (включите DDC/CI в OSD)"
+        if (ddcutilInstalled) return "DDC/CI: ddcutil найден, но яркость недоступна"
+        return "Устройство подсветки не найдено (backlight/brightnessctl/ddcutil)"
+    }
+
     Process {
         id: detectProc
         command: ["bash", "-lc",
+            "i2c=0; ls /dev/i2c-* >/dev/null 2>&1 && i2c=1; " +
+            "ddc=0; command -v ddcutil >/dev/null 2>&1 && ddc=1; " +
             "d=$(ls -1 /sys/class/backlight 2>/dev/null | head -n 1); " +
             "if [ -n \"$d\" ] && [ -f \"/sys/class/backlight/$d/brightness\" ] && [ -f \"/sys/class/backlight/$d/max_brightness\" ]; then " +
-            "  printf 'sysfs\\t%s\\t/sys/class/backlight/%s\\t%s\\t%s\\n' \"$d\" \"$d\" \"$(cat /sys/class/backlight/$d/brightness 2>/dev/null)\" \"$(cat /sys/class/backlight/$d/max_brightness 2>/dev/null)\"; exit 0; " +
+            "  printf 'sysfs\t%s\t/sys/class/backlight/%s\t%s\t%s\t%s\t%s\t\n' \"$d\" \"$d\" \"$(cat /sys/class/backlight/$d/brightness 2>/dev/null)\" \"$(cat /sys/class/backlight/$d/max_brightness 2>/dev/null)\" \"$ddc\" \"$i2c\"; exit 0; " +
             "fi; " +
             "if command -v brightnessctl >/dev/null 2>&1; then " +
             "  line=$(brightnessctl -m -c backlight 2>/dev/null | head -n 1); " +
@@ -79,44 +97,69 @@ Item {
             "    cur=$(printf '%s' \"$line\" | awk -F, '{print $3}'); " +
             "    max=$(printf '%s' \"$line\" | awk -F, '{print $5}'); " +
             "    [ -z \"$max\" ] && max=100; " +
-            "    printf 'brightnessctl\\t%s\\t\\t%s\\t%s\\n' \"$dev\" \"$cur\" \"$max\"; exit 0; " +
+            "    printf 'brightnessctl\t%s\t\t%s\t%s\t%s\t%s\t\n' \"$dev\" \"$cur\" \"$max\" \"$ddc\" \"$i2c\"; exit 0; " +
             "  fi; " +
             "fi; " +
             "if command -v light >/dev/null 2>&1; then " +
-            "  cur=$(light -G 2>/dev/null | tr -d '\\n'); " +
-            "  if [ -n \"$cur\" ]; then printf 'light\\tlight\\t\\t%s\\t100\\n' \"$cur\"; exit 0; fi; " +
+            "  cur=$(light -G 2>/dev/null | tr -d '\n'); " +
+            "  if [ -n \"$cur\" ]; then printf 'light\tlight\t\t%s\t100\t%s\t%s\t\n' \"$cur\" \"$ddc\" \"$i2c\"; exit 0; fi; " +
             "fi; " +
-            "if command -v ddcutil >/dev/null 2>&1; then " +
-            "  out=$(ddcutil getvcp 10 --brief 2>/dev/null | head -n 1); " +
-            "  if [ -n \"$out\" ]; then " +
-            "    cur=$(printf '%s' \"$out\" | awk '{print $4}'); " +
-            "    max=$(printf '%s' \"$out\" | awk '{print $5}'); " +
-            "    [ -z \"$max\" ] && max=100; " +
-            "    if [ -n \"$cur\" ]; then printf 'ddcutil\\tddcutil\\t\\t%s\\t%s\\n' \"$cur\" \"$max\"; exit 0; fi; " +
+            "if [ \"$ddc\" = \"1\" ]; then " +
+            "  mons=$(ddcutil detect --brief 2>/dev/null | awk '/I2C bus:/{gsub(/.*\\/dev\\/i2c-/,\"\"); gsub(/[^0-9].*/,\"\"); if($0!=\"\") print $0}' | paste -sd, -); " +
+            "  first=$(printf '%s' \"$mons\" | tr ',' '\n' | head -n 1); " +
+            "  if [ -n \"$first\" ]; then " +
+            "    out=$(ddcutil --bus \"$first\" getvcp 10 --brief 2>/dev/null | head -n 1); " +
+            "    if [ -n \"$out\" ]; then " +
+            "      cur=$(printf '%s' \"$out\" | awk '{print $4}'); " +
+            "      max=$(printf '%s' \"$out\" | awk '{print $5}'); " +
+            "      [ -z \"$max\" ] && max=100; " +
+            "      if [ -n \"$cur\" ]; then printf 'ddcutil\tDDC/CI bus %s\t%s\t%s\t%s\t%s\t%s\t%s\n' \"$first\" \"$first\" \"$cur\" \"$max\" \"$ddc\" \"$i2c\" \"$mons\"; exit 0; fi; " +
+            "    fi; " +
             "  fi; " +
-            "fi"]
+            "  printf 'none\t\t\t0\t100\t%s\t%s\t%s\n' \"$ddc\" \"$i2c\" \"$mons\"; exit 0; " +
+            "fi; " +
+            "printf 'none\t\t\t0\t100\t%s\t%s\t\n' \"$ddc\" \"$i2c\""]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
                 var txt = (this.text || "").trim()
-                if (txt === "") {
+                var p = txt === "" ? [] : txt.split("\t")
+                var backend = p[0] || "none"
+                root.ddcutilInstalled = (p[5] || "0") === "1"
+                root.i2cPresent = (p[6] || "0") === "1"
+                var monsRaw = (p[7] || "").trim()
+                var mons = []
+                if (monsRaw !== "") {
+                    var parts = monsRaw.split(",")
+                    for (var i = 0; i < parts.length; i++) {
+                        var m = (parts[i] || "").trim()
+                        if (m !== "") mons.push(m)
+                    }
+                }
+                root.ddcMonitors = mons
+
+                if (backend === "none" || backend === "") {
                     root.available = false
                     root.backend = ""
                     root.device = ""
                     root.devicePath = ""
+                    root.current = 0
+                    root.maximum = 100
                     root.ready = true
+                    root.statusMessage = root.statusText()
                     return
                 }
-                var p = txt.split("\t")
-                root.backend = p[0] || ""
+
+                root.backend = backend
                 root.device = p[1] || ""
                 root.devicePath = p[2] || ""
                 var cur = parseFloat(p[3] || "0")
                 var max = parseFloat(p[4] || "100")
                 root.current = isNaN(cur) ? 0 : Math.round(cur)
                 root.maximum = isNaN(max) || max <= 0 ? 100 : Math.round(max)
-                root.available = root.backend !== ""
+                root.available = true
                 root.ready = true
+                root.statusMessage = root.statusText()
             }
         }
     }

@@ -69,6 +69,7 @@ ShellRoot {
     // ===================== КНОПКИ ПИТАНИЯ =====================
     Process { id: rebootProc; command: ["systemctl", "reboot"] }
     Process { id: poweroffProc; command: ["systemctl", "poweroff"] }
+    property int holdDuration: 900
 
     // ===================== ЗАПОМИНАНИЕ СЕССИИ =====================
     FileView {
@@ -384,24 +385,45 @@ ShellRoot {
                     id: pwBtn
                     required property var modelData
                     width: 48; height: 48; radius: 14
-                    color: ma.containsMouse ? root.cAccent : root.cSurface
+                    color: ma.containsMouse ? root.cSurface1 : root.cSurface
+                    border.color: ma.pressed ? root.cOrange : root.cSurface1
+                    clip: true
+                    Rectangle {
+                        anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+                        width: parent.width * ma.holdProgress
+                        radius: 14
+                        color: Qt.rgba(root.cOrange.r, root.cOrange.g, root.cOrange.b, 0.32)
+                    }
                     Text {
                         anchors.centerIn: parent
                         text: pwBtn.modelData.icon
                         font.family: "JetBrainsMono Nerd Font"
                         font.pixelSize: 20
-                        color: ma.containsMouse ? root.cBg : root.cFgMuted
+                        color: ma.pressed ? root.cYellow : (ma.containsMouse ? root.cFg : root.cFgMuted)
                     }
                     MouseArea {
                         id: ma
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: pwBtn.modelData.proc.running = true
+                        property real holdProgress: 0
+                        property bool fired: false
+                        onPressed: { fired = false; holdProgress = 0; holdTimer.restart() }
+                        onReleased: { holdTimer.stop(); holdProgress = 0 }
+                        onCanceled: { holdTimer.stop(); holdProgress = 0; fired = false }
+                        Timer {
+                            id: holdTimer; interval: 16; repeat: true
+                            onTriggered: {
+                                if (!ma.pressed) { stop(); ma.holdProgress = 0; return }
+                                ma.holdProgress = Math.min(1, ma.holdProgress + (16 / root.holdDuration))
+                                if (ma.holdProgress >= 1 && !ma.fired) { ma.fired = true; stop(); pwBtn.modelData.proc.running = true; ma.holdProgress = 0 }
+                            }
+                        }
                     }
                 }
             }
         }
+
 
         // Enter в любом месте окна = «Войти» (если пароль пуст — просто переводим фокус)
         Shortcut {

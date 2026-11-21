@@ -157,7 +157,8 @@ PanelWindow {
 
     function netItemCount() { return 3 + (netWifiNetworks ? netWifiNetworks.length : 0) }
     function audioItemCount() { return 5 + outputNodes().length + inputNodes().length }
-    function notifItemCount() { return 2 + (NotificationService.history ? NotificationService.history.count : 0) }
+    function notifItemCount() { return 2 + (NotificationService.history ? NotificationService.history.length : 0) }
+    function bluetoothItemCount() { return 2 + (BluetoothService.devices ? BluetoothService.devices.length : 0) }
     function barItemCount() { return 3 + BarConfig.allPresets().length + 1 }
     function colorsItemCount() { return 3 + colorPresetsByMode("dark").length + colorPresetsByMode("light").length }
 
@@ -166,6 +167,7 @@ PanelWindow {
         if (pageId === "audio") return audioItemCount()
         if (pageId === "display") return 1
         if (pageId === "notifications") return notifItemCount()
+        if (pageId === "bluetooth") return bluetoothItemCount()
         if (pageId === "bar") return barItemCount()
         if (pageId === "colors") return colorsItemCount()
         if (pageId === "power") return 5
@@ -224,8 +226,19 @@ PanelWindow {
             else if (idx === 1) NotificationService.dismissAll()
             else {
                 var ni = idx - 2
-                if (NotificationService.history && ni >= 0 && ni < NotificationService.history.count)
-                    NotificationService.dismiss(NotificationService.history.get(ni).id)
+                if (NotificationService.history && ni >= 0 && ni < NotificationService.history.length)
+                    NotificationService.dismiss(NotificationService.history[ni].id)
+            }
+        } else if (currentPage === "bluetooth") {
+            if (idx === 0) BluetoothService.togglePower()
+            else if (idx === 1) { BluetoothService.refresh(); BluetoothService.refreshDevices() }
+            else {
+                var bi = idx - 2
+                var bds = BluetoothService.devices || []
+                if (bi >= 0 && bi < bds.length) {
+                    if (bds[bi].connected) BluetoothService.disconnect(bds[bi].mac)
+                    else BluetoothService.connect(bds[bi].mac)
+                }
             }
         } else if (currentPage === "bar") {
             if (idx === 0) BarConfig.setStyle("islands")
@@ -1274,41 +1287,44 @@ PanelWindow {
                         }
 
                         QuickTile {
-                            width: (parent.width - 24) / 5
+                            width: (parent.width - 30) / 6
                             icon: root.netWifiEnabled ? "󰖩" : "󰖪"
-                            label: root.netWifiEnabled ? "Wi-Fi" : "Wi-Fi"
+                            label: "Wi-Fi"
                             active: root.netWifiEnabled
                             onClicked: root.toggleWifiRadio()
                         }
-
                         QuickTile {
-                            width: (parent.width - 24) / 5
+                            width: (parent.width - 30) / 6
+                            icon: BluetoothService.powered ? "󰂯" : "󰂲"
+                            label: "BT"
+                            active: BluetoothService.powered
+                            onClicked: BluetoothService.togglePower()
+                        }
+                        QuickTile {
+                            width: (parent.width - 30) / 6
                             icon: NotificationService.dnd ? "󰂛" : "󰂚"
                             label: "DND"
                             active: NotificationService.dnd
                             onClicked: NotificationService.toggleDnd()
                         }
-
                         QuickTile {
-                            width: (parent.width - 24) / 5
+                            width: (parent.width - 30) / 6
                             icon: (root.caffeineModule && root.caffeineModule.isInhibited) ? "󰅶" : "󰾪"
                             label: "Кофеин"
                             active: root.caffeineModule ? root.caffeineModule.isInhibited : false
                             onClicked: { if (root.caffeineModule) root.caffeineModule.toggle() }
                         }
-
                         QuickTile {
-                            width: (parent.width - 24) / 5
+                            width: (parent.width - 30) / 6
                             icon: root.sourceAudio && root.sourceAudio.muted ? "󰍭" : "󰍬"
-                            label: "Микрофон"
+                            label: "Мик"
                             active: !(root.sourceAudio && root.sourceAudio.muted)
                             onClicked: Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_SOURCE@", "toggle"])
                         }
-
                         QuickTile {
-                            width: (parent.width - 24) / 5
+                            width: (parent.width - 30) / 6
                             icon: PowerProfileService.available ? PowerProfileService.iconFor(PowerProfileService.current) : "󰾅"
-                            label: PowerProfileService.available ? PowerProfileService.labelFor(PowerProfileService.current) : "Профиль"
+                            label: PowerProfileService.current === "performance" ? "Произв." : (PowerProfileService.current === "power-saver" ? "Эконом." : "Баланс")
                             active: PowerProfileService.available && PowerProfileService.current === "performance"
                             onClicked: {
                                 if (!PowerProfileService.available) return
@@ -1902,7 +1918,7 @@ PanelWindow {
                                                 spacing: 2
                                                 Text { text: "Яркость экрана"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; font.bold: true }
                                                 Text {
-                                                    text: BrightnessService.available ? ("Устройство: " + (BrightnessService.device || "backlight")) : (BrightnessService.ready ? "Устройство подсветки не найдено" : "Определение устройства...")
+                                                    text: BrightnessService.statusMessage !== "" ? BrightnessService.statusMessage : (BrightnessService.available ? ("Устройство: " + (BrightnessService.device || "backlight")) : (BrightnessService.ready ? "Устройство подсветки не найдено" : "Определение устройства..."))
                                                     color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; wrapMode: Text.WordWrap; width: parent.width
                                                 }
                                             }
@@ -1996,7 +2012,7 @@ PanelWindow {
                                         Text {
                                             width: parent.width
                                             visible: !BrightnessService.available
-                                            text: "Управление яркостью недоступно: не найдено поддерживаемое устройство подсветки (backlight/brightnessctl). На внешнем мониторе может потребоваться DDC/CI."
+                                            text: BrightnessService.statusMessage !== "" ? BrightnessService.statusMessage : "Управление яркостью недоступно: не найдено поддерживаемое устройство подсветки (backlight/brightnessctl/ddcutil)."
                                             color: Theme.fgMuted
                                             font.family: "JetBrainsMono Nerd Font"
                                             font.pixelSize: 11
@@ -2048,6 +2064,7 @@ PanelWindow {
                                 delegate: Rectangle {
                                     required property var modelData
                                     required property int index
+                                    property int notifId: modelData.id
                                     width: notifList.width
                                     height: nContent.implicitHeight + 20
                                     radius: 10
@@ -2055,31 +2072,128 @@ PanelWindow {
                                     property bool kbdFocused: root.navZone === "content" && root.currentPage === "notifications" && root.contentFocusIndex === index + 2
                                     border.color: kbdFocused ? Theme.accent : (modelData.urgency === 2 ? Theme.red : "transparent")
                                     border.width: kbdFocused ? 2 : (modelData.urgency === 2 ? 1 : 0)
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                    Behavior on border.color { ColorAnimation { duration: 150 } }
 
                                     Column {
                                         id: nContent
-                                        anchors.fill: parent; anchors.margins: 10; spacing: 4
-                                        Row {
+                                        anchors.fill: parent; anchors.margins: 10; spacing: 6
+                                        RowLayout {
                                             width: parent.width; spacing: 6
-                                            Text { width: parent.width - 24; text: modelData.appName || ""; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true; elide: Text.ElideRight }
-                                            Text { text: "󰅖"; color: nCloseMouse.containsMouse ? Theme.red : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; MouseArea { id: nCloseMouse; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationService.dismiss(modelData.id) } }
+                                            Text { Layout.fillWidth: true; text: (modelData.appName || "") + ((modelData.count || 1) > 1 ? " • " + modelData.count : ""); color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true; elide: Text.ElideRight }
+                                            Text { text: "очистить"; color: clearAppMouse.containsMouse ? Theme.red : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9; MouseArea { id: clearAppMouse; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationService.dismissApp(modelData.appName) } }
+                                            Text { text: "󰅖"; color: nCloseMouse.containsMouse ? Theme.red : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; MouseArea { id: nCloseMouse; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationService.dismiss(notifId) } }
                                         }
                                         Text { width: parent.width; visible: (modelData.summary || "") !== ""; text: modelData.summary || ""; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true; elide: Text.ElideRight }
                                         Text { width: parent.width; visible: (modelData.body || "") !== ""; text: modelData.body || ""; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; wrapMode: Text.WordWrap; maximumLineCount: 4; elide: Text.ElideRight }
+                                        Flow {
+                                            width: parent.width; spacing: 6; visible: (modelData.actions || []).length > 0
+                                            Repeater {
+                                                model: modelData.actions || []
+                                                delegate: Rectangle {
+                                                    required property var modelData
+                                                    radius: 8; height: 24; width: Math.max(40, aText.implicitWidth + 14)
+                                                    color: aMouse.containsMouse ? Theme.accent : Theme.surface1
+                                                    border.color: Theme.surface1; border.width: 1
+                                                    Text { id: aText; anchors.centerIn: parent; text: modelData.text || modelData.identifier || "Action"; color: aMouse.containsMouse ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                                                    MouseArea { id: aMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationService.invokeAction(notifId, modelData.identifier) }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
                                 Text {
                                     anchors.centerIn: parent
-                                    visible: NotificationService.history.count === 0
+                                    visible: (NotificationService.history ? NotificationService.history.length : 0) === 0
                                     text: "Нет уведомлений"
                                     color: Theme.fgMuted
                                     font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13
                                 }
                             }
                         }
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            visible: root.currentPage === "bluetooth"
+                            spacing: 10
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                Text { text: "󰂯"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                Text { Layout.fillWidth: true; text: "Bluetooth"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; font.bold: true }
+                                Rectangle {
+                                    width: 120; height: 32; radius: 10
+                                    color: BluetoothService.powered ? Theme.accent : Theme.surface
+                                    border.color: (root.navZone === "content" && root.currentPage === "bluetooth" && root.contentFocusIndex === 0) ? Theme.accent2 : Theme.surface1
+                                    border.width: (root.navZone === "content" && root.currentPage === "bluetooth" && root.contentFocusIndex === 0) ? 2 : 1
+                                    Text { anchors.centerIn: parent; text: BluetoothService.powered ? "Вкл" : "Выкл"; color: BluetoothService.powered ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true }
+                                    MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: BluetoothService.togglePower() }
+                                }
+                                Rectangle {
+                                    width: 110; height: 32; radius: 10
+                                    color: refreshBtMouse.containsMouse ? Theme.surface1 : Theme.surface
+                                    border.color: (root.navZone === "content" && root.currentPage === "bluetooth" && root.contentFocusIndex === 1) ? Theme.accent2 : Theme.surface1
+                                    border.width: (root.navZone === "content" && root.currentPage === "bluetooth" && root.contentFocusIndex === 1) ? 2 : 1
+                                    Text { anchors.centerIn: parent; text: "Обновить"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
+                                    MouseArea { id: refreshBtMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { BluetoothService.refresh(); BluetoothService.refreshDevices() } }
+                                }
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: BluetoothService.statusMessage
+                                color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; wrapMode: Text.WordWrap
+                            }
+
+                            ListView {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                clip: true
+                                spacing: 8
+                                model: BluetoothService.devices || []
+
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    required property int index
+                                    width: ListView.view.width
+                                    height: 56
+                                    radius: 10
+                                    color: btRowMouse.containsMouse ? Theme.surface1 : Theme.surface
+                                    property bool kbdFocused: root.navZone === "content" && root.currentPage === "bluetooth" && root.contentFocusIndex === index + 2
+                                    border.color: kbdFocused ? Theme.accent : (modelData.connected ? Theme.accent : Theme.surface1)
+                                    border.width: kbdFocused ? 2 : 1
+
+                                    RowLayout {
+                                        anchors.fill: parent; anchors.margins: 10; spacing: 10
+                                        Text { text: modelData.iconGlyph || "󰂯"; color: modelData.connected ? Theme.accent : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                        ColumnLayout {
+                                            Layout.fillWidth: true; spacing: 2
+                                            Text { Layout.fillWidth: true; text: modelData.name || modelData.mac; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true; elide: Text.ElideRight }
+                                            Text { Layout.fillWidth: true; text: (modelData.connected ? "Подключено" : (modelData.paired ? "Сопряжено" : "Найдено")) + (modelData.battery >= 0 ? " • " + modelData.battery + "%" : ""); color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; elide: Text.ElideRight }
+                                        }
+                                        Rectangle {
+                                            width: 96; height: 30; radius: 8
+                                            color: modelData.connected ? Theme.red : Theme.accent
+                                            opacity: BluetoothService.busy ? 0.6 : 1
+                                            Text { anchors.centerIn: parent; text: modelData.connected ? "Отключить" : "Подключить"; color: Theme.bg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.bold: true }
+                                        }
+                                    }
+                                    MouseArea {
+                                        id: btRowMouse
+                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: modelData.connected ? BluetoothService.disconnect(modelData.mac) : BluetoothService.connect(modelData.mac)
+                                    }
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: !BluetoothService.available || (BluetoothService.powered && (BluetoothService.devices || []).length === 0)
+                                    text: !BluetoothService.available ? "Bluetooth недоступен" : "Нет устройств"
+                                    color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12
+                                }
+                            }
+                        }
+
                         Flickable {
                             id: pageBar
                             anchors.fill: parent
@@ -3341,8 +3455,8 @@ PanelWindow {
                                 Repeater {
                                     model: [
                                         { icon: "󰌾", label: "Заблокировать", cmd: ["loginctl", "lock-session"], danger: false },
-                                        { icon: "󰍃", label: "Выйти из сессии", cmd: ["niri", "msg", "action", "quit", "-s"], danger: false },
-                                        { icon: "󰒲", label: "Сон", cmd: ["systemctl", "suspend"], danger: false },
+                                        { icon: "󰍃", label: "Выйти из сессии", cmd: ["niri", "msg", "action", "quit", "-s"], danger: true },
+                                        { icon: "󰒲", label: "Сон", cmd: ["systemctl", "suspend"], danger: true },
                                         { icon: "󰜉", label: "Перезагрузка", cmd: ["systemctl", "reboot"], danger: true },
                                         { icon: "󰐥", label: "Выключение", cmd: ["systemctl", "poweroff"], danger: true }
                                     ]
@@ -3352,95 +3466,55 @@ PanelWindow {
                                         width: powerCol.width
                                         height: 52
                                         radius: 12
-                                        color: pHoldArea.containsMouse ? (modelData.danger ? Theme.red : Theme.accent) : Theme.surface
-                                        border.color: (root.navZone === "content" && root.currentPage === "power" && root.contentFocusIndex === index) ? Theme.accent : Theme.surface1
+                                        color: pHoldArea.containsMouse ? Theme.surface1 : Theme.surface
+                                        border.color: (root.navZone === "content" && root.currentPage === "power" && root.contentFocusIndex === index) ? Theme.accent : (modelData.danger ? Qt.rgba(Theme.orange.r, Theme.orange.g, Theme.orange.b, 0.35) : Theme.surface1)
                                         border.width: (root.navZone === "content" && root.currentPage === "power" && root.contentFocusIndex === index) ? 2 : 1
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                                        clip: true
 
                                         Rectangle {
-                                            anchors.left: parent.left
-                                            anchors.top: parent.top
-                                            anchors.bottom: parent.bottom
+                                            anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
                                             width: parent.width * pHoldArea.holdProgress
                                             radius: 12
-                                            color: modelData.danger ? Theme.red : Theme.accent
-                                            opacity: pHoldArea.pressed ? 0.35 : 0.18
+                                            color: Qt.rgba(Theme.orange.r, Theme.orange.g, Theme.orange.b, 0.32)
                                             visible: modelData.danger
                                         }
 
-                                        Row {
+                                        RowLayout {
                                             anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 12
-                                            Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.icon; color: pHoldArea.containsMouse ? Theme.bg : (modelData.danger ? Theme.red : Theme.fg); font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
-                                            Text { anchors.verticalCenter: parent.verticalCenter; width: Math.max(80, parent.width - 220); text: modelData.label; color: pHoldArea.containsMouse ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; elide: Text.ElideRight }
+                                            Text { text: modelData.icon; color: modelData.danger ? Theme.red : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
+                                            Text { Layout.fillWidth: true; text: modelData.label; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; elide: Text.ElideRight }
                                             Text {
-                                                anchors.verticalCenter: parent.verticalCenter
                                                 visible: modelData.danger
-                                                text: pHoldArea.holdProgress >= 1 ? "Отпустите для подтверждения" : (pHoldArea.pressed ? "Удерживайте..." : "Удержание для подтверждения")
-                                                color: pHoldArea.containsMouse ? Theme.bg : Theme.fgMuted
+                                                text: pHoldArea.pressed ? Math.round(pHoldArea.holdProgress * 100) + "%" : "Удержать"
+                                                color: pHoldArea.pressed ? Theme.yellow : Theme.fgMuted
                                                 font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10
-                                                elide: Text.ElideRight
                                             }
                                         }
+
                                         MouseArea {
                                             id: pHoldArea
                                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                             property real holdProgress: 0
-                                            property bool triggered: false
+                                            property bool fired: false
+                                            property int holdMs: 900
 
-                                            NumberAnimation {
-                                                id: pHoldAnim
-                                                target: pHoldArea
-                                                property: "holdProgress"
-                                                from: pHoldArea.holdProgress
-                                                to: 1
-                                                duration: Math.max(120, Math.round(900 * (1 - pHoldArea.holdProgress)))
-                                                easing.type: Easing.Linear
-                                                onFinished: {
-                                                    if (pHoldArea.pressed && !pHoldArea.triggered && pHoldArea.holdProgress >= 0.999) {
-                                                        pHoldArea.triggered = true
-                                                        root.visible = false
-                                                        Quickshell.execDetached(modelData.cmd)
-                                                    }
-                                                }
-                                            }
-                                            NumberAnimation {
-                                                id: pHoldCancelAnim
-                                                target: pHoldArea
-                                                property: "holdProgress"
-                                                to: 0
-                                                duration: 180
-                                                easing.type: Easing.OutQuad
-                                            }
-
-                                            onPressed: {
-                                                triggered = false
-                                                if (modelData.danger) {
-                                                    pHoldCancelAnim.stop()
-                                                    pHoldAnim.from = holdProgress
-                                                    pHoldAnim.duration = Math.max(120, Math.round(900 * (1 - holdProgress)))
-                                                    pHoldAnim.start()
-                                                }
-                                            }
+                                            onPressed: { fired = false; holdProgress = 0; if (modelData.danger) pHoldTimer.restart() }
                                             onReleased: {
-                                                if (!modelData.danger) {
-                                                    if (containsMouse && !triggered) {
-                                                        triggered = true
-                                                        root.visible = false
-                                                        Quickshell.execDetached(modelData.cmd)
-                                                    }
-                                                    holdProgress = 0
-                                                    return
-                                                }
-                                                if (!triggered) {
-                                                    pHoldAnim.stop()
-                                                    pHoldCancelAnim.start()
-                                                }
+                                                if (modelData.danger) { pHoldTimer.stop(); holdProgress = 0; return }
+                                                if (!fired) { fired = true; root.visible = false; Quickshell.execDetached(modelData.cmd) }
                                             }
-                                            onCanceled: {
-                                                pHoldAnim.stop()
-                                                triggered = false
-                                                pHoldCancelAnim.start()
+                                            onCanceled: { pHoldTimer.stop(); holdProgress = 0; fired = false }
+
+                                            Timer {
+                                                id: pHoldTimer
+                                                interval: 16; repeat: true
+                                                onTriggered: {
+                                                    if (!pHoldArea.pressed) { stop(); pHoldArea.holdProgress = 0; return }
+                                                    pHoldArea.holdProgress = Math.min(1, pHoldArea.holdProgress + (16 / pHoldArea.holdMs))
+                                                    if (pHoldArea.holdProgress >= 1 && !pHoldArea.fired) {
+                                                        pHoldArea.fired = true; stop(); root.visible = false; Quickshell.execDetached(modelData.cmd); pHoldArea.holdProgress = 0
+                                                    }
+                                                }
                                             }
                                         }
                                     }

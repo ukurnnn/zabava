@@ -73,6 +73,7 @@ Item {
     property bool mediaAccentActive: false
 
     readonly property string uiStylePath: Quickshell.env("HOME") + "/.config/quickshell/ui-style.json"
+    readonly property int uiStyleVersion: 2
 
     function clampValue(v, lo, hi) {
         return Math.max(lo, Math.min(hi, Number(v)))
@@ -90,14 +91,20 @@ Item {
             if (txt === "") return
             try {
                 var obj = JSON.parse(txt)
-                if (obj && obj.glassEnabled !== undefined) root.glassEnabled = obj.glassEnabled === true
-                if (obj && obj.glassOpacity !== undefined) root.glassOpacity = clampValue(obj.glassOpacity, 0.5, 1.6)
-                if (obj && obj.glassTint !== undefined) root.glassTint = clampValue(obj.glassTint, 0.4, 1.8)
-                if (obj && obj.glassHighlightStrength !== undefined) root.glassHighlightStrength = clampValue(obj.glassHighlightStrength, 0.0, 2.0)
-                if (obj && obj.glassBorderStrength !== undefined) root.glassBorderStrength = clampValue(obj.glassBorderStrength, 0.0, 2.0)
-                if (obj && obj.glassBlur !== undefined) root.glassBlur = obj.glassBlur === true
-                if (obj && obj.sheenEnabled !== undefined) root.sheenEnabled = obj.sheenEnabled === true
-                if (obj && obj.glassPreset !== undefined) root.glassPreset = String(obj.glassPreset)
+                if (!obj || typeof obj !== "object") return
+                var v = obj.uiStyleVersion !== undefined ? parseInt(obj.uiStyleVersion) : 1
+                if (isNaN(v) || v < 1) v = 1
+
+                if (obj.glassEnabled !== undefined) root.glassEnabled = obj.glassEnabled === true
+                if (obj.glassOpacity !== undefined) root.glassOpacity = clampValue(obj.glassOpacity, 0.5, 1.6)
+                if (obj.glassTint !== undefined) root.glassTint = clampValue(obj.glassTint, 0.4, 1.8)
+                if (obj.glassHighlightStrength !== undefined) root.glassHighlightStrength = clampValue(obj.glassHighlightStrength, 0.0, 2.0)
+                if (obj.glassBorderStrength !== undefined) root.glassBorderStrength = clampValue(obj.glassBorderStrength, 0.0, 2.0)
+                if (obj.glassBlur !== undefined) root.glassBlur = obj.glassBlur === true
+                if (obj.sheenEnabled !== undefined) root.sheenEnabled = obj.sheenEnabled === true
+                if (obj.glassPreset !== undefined) root.glassPreset = String(obj.glassPreset)
+
+                if (v < 2) root.saveUiStyle()
             } catch (e) {
             }
         }
@@ -112,6 +119,7 @@ Item {
 
     function uiStyleObject() {
         return {
+            uiStyleVersion: root.uiStyleVersion,
             glassEnabled: root.glassEnabled,
             glassOpacity: root.glassOpacity,
             glassTint: root.glassTint,

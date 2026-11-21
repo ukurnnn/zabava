@@ -43,22 +43,30 @@ Item {
 
         // МИКРОФОН
         Item {
-            width: micText.implicitWidth + 4
+            width: micRow.implicitWidth + 4
             height: 24
 
-            Text {
-                id: micText
+            Row {
+                id: micRow
                 anchors.centerIn: parent
-                text: {
-                    if (!root.sourceAudio) return "󰍬 ---"
-                    if (root.sourceAudio.muted) return "󰍭 " + Math.round(root.sourceAudio.volume * 100) + "%"
-                    if (root.sourceAudio.volume < 0.3) return "󰍬 " + Math.round(root.sourceAudio.volume * 100) + "%"
-                    return "󰍮 " + Math.round(root.sourceAudio.volume * 100) + "%"
+                spacing: 2
+                Text {
+                    id: micText
+                    text: {
+                        if (!root.sourceAudio) return "󰍬"
+                        return root.sourceAudio.muted ? "󰍭" : "󰍬"
+                    }
+                    color: (micArea.containsMouse || (root.popup && root.popup.visible)) ? Theme.yellow : (root.sourceAudio && root.sourceAudio.muted ? Theme.red : Theme.fg)
+                    font.family: "JetBrainsMono Nerd Font"
+                    font.pixelSize: 15
+                    Behavior on color { ColorAnimation { duration: 150 } }
                 }
-                color: (micArea.containsMouse || (root.popup && root.popup.visible)) ? Theme.yellow : Theme.fg
-                font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: 15
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Rectangle {
+                    visible: !!(root.sourceAudio && !root.sourceAudio.muted)
+                    width: 6; height: 6; radius: 3
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Theme.green
+                }
             }
 
             MouseArea {

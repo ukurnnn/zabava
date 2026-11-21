@@ -39,6 +39,7 @@ Item {
     })
 
     readonly property string configPath: Quickshell.env("HOME") + "/.config/quickshell/bar-config.json"
+    readonly property int configVersion: 2
 
     readonly property var builtinPresets: ({
         my_islands: { name: "Островки", style: "islands" },
@@ -201,11 +202,22 @@ Item {
             if (txt === "") return
             try {
                 var obj = JSON.parse(txt)
-                if (obj && obj.style) root.style = obj.style
-                if (obj && obj.activePreset) root.activePreset = obj.activePreset
-                if (obj && obj.userPresets) root.userPresets = obj.userPresets
-                if (obj && obj.moduleOrder) root.moduleOrder = root.cloneOrder(obj.moduleOrder)
-                if (obj && obj.hiddenModules) root.hiddenModules = obj.hiddenModules
+                if (!obj || typeof obj !== "object") return
+                var v = obj.configVersion !== undefined ? parseInt(obj.configVersion) : 1
+                if (isNaN(v) || v < 1) v = 1
+
+                if (obj.style) root.style = obj.style
+                if (obj.activePreset) root.activePreset = obj.activePreset
+                if (obj.userPresets && typeof obj.userPresets === "object") root.userPresets = obj.userPresets
+                if (obj.moduleOrder) root.moduleOrder = root.cloneOrder(obj.moduleOrder)
+                if (obj.hiddenModules && obj.hiddenModules.length !== undefined) root.hiddenModules = obj.hiddenModules
+
+                // v1 -> v2: ensure moduleOrder/hiddenModules exist
+                if (v < 2) {
+                    root.ensureModuleOrder()
+                    if (!root.hiddenModules) root.hiddenModules = []
+                    root.save()
+                }
             } catch (e) {
             }
         }
@@ -222,6 +234,7 @@ Item {
     function save() {
         try {
             var obj = {
+                configVersion: root.configVersion,
                 style: root.style,
                 activePreset: root.activePreset,
                 userPresets: root.userPresets || {},

@@ -7,7 +7,7 @@ Item {
     implicitWidth: iconText.implicitWidth + badge.width + 8
     implicitHeight: 24
 
-    readonly property int count: NotificationService.history.count
+    readonly property int count: NotificationService.history.length
 
     Row {
         anchors.centerIn: parent

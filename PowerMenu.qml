@@ -4,16 +4,10 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
-import Quickshell.Widgets
 
 PanelWindow {
     id: root
-    anchors {
-        top: true
-        bottom: true
-        left: true
-        right: true
-    }
+    anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     visible: false
     exclusiveZone: 0
@@ -21,394 +15,188 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-powermenu"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
-    IpcHandler {
-        target: "powermenu"
-        function toggle(): void { root.visible = !root.visible }
-    }
+    IpcHandler { target: "powermenu"; function toggle(): void { root.visible = !root.visible } }
 
     readonly property var actions: [
-        { icon: "󰌾", label: "Lock", cmd: ["loginctl", "lock-session"], dangerous: false },
-        { icon: "󰍃", label: "Logout", cmd: ["niri", "msg", "action", "quit", "-s"], dangerous: false },
-        { icon: "󰒲", label: "Sleep", cmd: ["systemctl", "suspend"], dangerous: false },
-        { icon: "󰜉", label: "Reboot", cmd: ["systemctl", "reboot"], dangerous: true },
-        { icon: "󰐥", label: "Power Off", cmd: ["systemctl", "poweroff"], dangerous: true }
+        { icon: "󰌾", label: "Заблокировать", cmd: ["loginctl", "lock-session"], dangerous: false },
+        { icon: "󰍃", label: "Выйти", cmd: ["niri", "msg", "action", "quit", "-s"], dangerous: true },
+        { icon: "󰒲", label: "Сон", cmd: ["systemctl", "suspend"], dangerous: true },
+        { icon: "󰜉", label: "Перезагрузка", cmd: ["systemctl", "reboot"], dangerous: true },
+        { icon: "󰐥", label: "Выключение", cmd: ["systemctl", "poweroff"], dangerous: true }
     ]
+    property int holdDuration: 900
 
-    CloseHandler {
-        target: root
+    function runAction(cmd) { Quickshell.execDetached(cmd); root.visible = false }
+    CloseHandler { target: root }
+
+    Rectangle {
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.18)
+        opacity: root.visible ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 160 } }
+        MouseArea { anchors.fill: parent; onClicked: root.visible = false }
     }
 
     Rectangle {
-        id: sideWall
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.rightMargin: root.visible ? 8 : -width - 20
-        anchors.topMargin: 8
-        anchors.bottomMargin: 8
-
-        width: 380
-        radius: 16
+        id: panel
+        anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
+        anchors.rightMargin: root.visible ? 10 : -width - 24
+        anchors.topMargin: 10; anchors.bottomMargin: 10
+        width: 340
+        radius: 20
         color: Theme.glassPanel
         border.color: Theme.glassBorderStrong
         border.width: 1
         opacity: root.visible ? 1 : 0
 
-        Behavior on anchors.rightMargin {
-            NumberAnimation {
-                duration: 280
-                easing.type: Easing.OutCubic
-            }
-        }
-        Behavior on opacity { NumberAnimation { duration: 180 } }
-        Behavior on color { ColorAnimation { duration: 180 } }
-        Behavior on border.color { ColorAnimation { duration: 180 } }
+        Behavior on anchors.rightMargin { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 160 } }
 
         Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: 1
-            height: Math.max(0, parent.height * 0.18)
-            radius: Math.max(0, parent.radius - 1)
+            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+            anchors.margins: 1; height: parent.height * 0.22; radius: Math.max(0, parent.radius - 1)
             gradient: Gradient {
                 GradientStop { position: 0.0; color: Theme.glassHighlight }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }
 
-        MouseArea { anchors.fill: parent; onClicked: {} }
+        MouseArea { anchors.fill: parent }
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
+            anchors.margins: 18
+            spacing: 14
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    text: "󰒓"
-                    color: Theme.accent
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 18
+                Text { text: "󰐥"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
+                ColumnLayout {
+                    Layout.fillWidth: true; spacing: 0
+                    Text { text: "Питание"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16; font.bold: true }
+                    Text { text: "Профиль и действия системы"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
                 }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Центр управления"
-                    color: Theme.fg
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 16
-                    font.bold: true
-                }
-
-                Text {
-                    text: "󰅖"
-                    color: closeArea.containsMouse ? Theme.red : Theme.overlay
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 16
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    MouseArea {
-                        id: closeArea
-                        anchors.fill: parent
-                        anchors.margins: -6
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.visible = false
-                    }
+                Rectangle {
+                    width: 28; height: 28; radius: 8
+                    color: closeArea.containsMouse ? Theme.surface1 : "transparent"
+                    Text { anchors.centerIn: parent; text: "󰅖"; color: closeArea.containsMouse ? Theme.red : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
+                    MouseArea { id: closeArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.visible = false }
                 }
             }
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.surface
-            }
+                implicitHeight: ppCol.implicitHeight + 20
+                radius: 14
+                color: Theme.glassPanelSoft
+                border.color: Theme.glassBorder; border.width: 1
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Text {
-                    text: "󰂚"
-                    color: Theme.accent
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 14
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: "Уведомления"
-                    color: Theme.fg
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 13
-                    font.bold: true
-                }
-
-                Text {
-                    text: NotificationService.dnd ? "DND: ON" : "DND: OFF"
-                    color: NotificationService.dnd ? Theme.red : Theme.fgMuted
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 11
-
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.margins: -4
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: NotificationService.toggleDnd()
+                ColumnLayout {
+                    id: ppCol
+                    anchors.fill: parent; anchors.margins: 10; spacing: 8
+                    Text { text: "Профиль питания"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true }
+                    Text {
+                        Layout.fillWidth: true
+                        text: PowerProfileService.available ? PowerProfileService.statusMessage : PowerProfileService.statusMessage
+                        color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9; wrapMode: Text.WordWrap
                     }
-                }
-
-                Text {
-                    text: "󰆴"
-                    color: clearArea.containsMouse ? Theme.red : Theme.overlay
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 13
-                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                    MouseArea {
-                        id: clearArea
-                        anchors.fill: parent
-                        anchors.margins: -4
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: NotificationService.dismissAll()
-                    }
-                }
-            }
-
-            ListView {
-                id: notifList
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                clip: true
-                spacing: 8
-                model: NotificationService.history
-
-                delegate: Rectangle {
-                    required property var modelData
-                    required property int index
-
-                    width: notifList.width
-                    height: contentCol.implicitHeight + 20
-                    radius: 10
-                    color: Theme.surface
-                    border.color: modelData.urgency === 2 ? Theme.red : "transparent"
-                    border.width: modelData.urgency === 2 ? 1 : 0
-
-                    ColumnLayout {
-                        id: contentCol
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 4
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: modelData.appName
-                                color: Theme.accent
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 11
-                                font.bold: true
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                text: "󰅖"
-                                color: closeItemArea.containsMouse ? Theme.red : Theme.overlay
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 12
-                                Behavior on color { ColorAnimation { duration: 150 } }
-
-                                MouseArea {
-                                    id: closeItemArea
-                                    anchors.fill: parent
-                                    anchors.margins: -4
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: NotificationService.dismiss(modelData.id)
+                    Row {
+                        Layout.fillWidth: true; spacing: 8
+                        visible: PowerProfileService.available
+                        Repeater {
+                            model: PowerProfileService.profiles || []
+                            delegate: Rectangle {
+                                required property var modelData
+                                width: (ppCol.width - 16) / Math.max(1, (PowerProfileService.profiles || []).length)
+                                height: 52; radius: 12
+                                property bool active: PowerProfileService.current === modelData
+                                color: active ? Theme.accent : (ppMouse.containsMouse ? Theme.surface1 : Theme.surface)
+                                border.color: active ? Theme.accent : Theme.surface1; border.width: 1
+                                opacity: PowerProfileService.busy ? 0.65 : 1
+                                Column {
+                                    anchors.centerIn: parent; spacing: 2
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.iconFor(modelData); color: active ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
+                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.labelFor(modelData); color: active ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
                                 }
+                                MouseArea { id: ppMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: PowerProfileService.setProfile(modelData) }
                             }
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            visible: modelData.summary !== ""
-                            text: modelData.summary
-                            color: Theme.fg
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 13
-                            font.bold: true
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            visible: modelData.body !== ""
-                            text: modelData.body
-                            color: Theme.fgMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 11
-                            wrapMode: Text.WordWrap
-                            maximumLineCount: 3
-                            elide: Text.ElideRight
                         }
                     }
                 }
-
-                Text {
-                    anchors.centerIn: parent
-                    visible: NotificationService.history.count === 0
-                    text: "Нет уведомлений"
-                    color: Theme.overlay
-                    font.family: "JetBrainsMono Nerd Font"
-                    font.pixelSize: 12
-                }
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.surface
-            }
+            Text { text: "Действия"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true }
 
-            Row {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 8
-
+            ColumnLayout {
+                Layout.fillWidth: true; spacing: 8
                 Repeater {
                     model: root.actions
-
                     delegate: Rectangle {
                         required property var modelData
-
-                        width: 60
-                        height: 60
-                        radius: 12
-                        color: holdArea.containsMouse
-                            ? (modelData.dangerous ? Theme.red : Theme.accent)
-                            : Theme.surface
-
-                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 2
-
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.icon
-                                color: holdArea.containsMouse ? Theme.bg : Theme.fg
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 20
-                            }
-
-                            Text {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.label
-                                color: holdArea.containsMouse ? Theme.bg : Theme.fg
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 9
-                            }
-                        }
+                        Layout.fillWidth: true; height: 50; radius: 14
+                        color: holdArea.containsMouse ? Qt.rgba(Theme.surface1.r, Theme.surface1.g, Theme.surface1.b, 0.95) : Theme.surface
+                        border.color: modelData.dangerous ? Qt.rgba(Theme.orange.r, Theme.orange.g, Theme.orange.b, 0.35) : Theme.surface1
+                        border.width: 1
+                        clip: true
 
                         Rectangle {
-                            id: holdFill
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
                             width: parent.width * holdArea.holdProgress
-                            radius: 12
-                            color: modelData.dangerous ? Theme.red : Theme.accent
-                            opacity: holdArea.pressed ? 0.35 : 0.18
+                            radius: parent.radius
                             visible: modelData.dangerous
-                            Behavior on opacity { NumberAnimation { duration: 120 } }
+                            color: Qt.rgba(Theme.orange.r, Theme.orange.g, Theme.orange.b, 0.32)
+                            Rectangle {
+                                anchors.fill: parent; radius: parent.radius
+                                color: "transparent"
+                                border.color: Qt.rgba(Theme.yellow.r, Theme.yellow.g, Theme.yellow.b, 0.35)
+                                border.width: 1
+                                opacity: holdArea.holdProgress > 0 ? 1 : 0
+                            }
                         }
 
-                        Text {
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            anchors.margins: 4
-                            visible: modelData.dangerous && (holdArea.pressed || holdArea.holdProgress > 0)
-                            text: holdArea.holdProgress >= 1 ? "✓" : "Удерж."
-                            color: holdArea.containsMouse || holdArea.pressed ? Theme.bg : Theme.fgMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 7
-                            opacity: 0.9
+                        RowLayout {
+                            anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 10
+                            Rectangle {
+                                width: 30; height: 30; radius: 9
+                                color: modelData.dangerous ? Qt.rgba(Theme.red.r, Theme.red.g, Theme.red.b, 0.14) : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14)
+                                Text { anchors.centerIn: parent; text: modelData.icon; color: modelData.dangerous ? Theme.red : Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 15 }
+                            }
+                            Text { Layout.fillWidth: true; text: modelData.label; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+                            Text {
+                                visible: modelData.dangerous
+                                text: holdArea.pressed ? Math.round(holdArea.holdProgress * 100) + "%" : "Удержать"
+                                color: holdArea.pressed ? Theme.yellow : Theme.fgMuted
+                                font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10
+                            }
                         }
 
                         MouseArea {
                             id: holdArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             property real holdProgress: 0
-                            property bool triggered: false
-
-                            NumberAnimation {
-                                id: holdAnim
-                                target: holdArea
-                                property: "holdProgress"
-                                from: holdArea.holdProgress
-                                to: 1
-                                duration: Math.max(120, Math.round(900 * (1 - holdArea.holdProgress)))
-                                easing.type: Easing.Linear
-                                onFinished: {
-                                    if (holdArea.pressed && !holdArea.triggered && holdArea.holdProgress >= 0.999) {
-                                        holdArea.triggered = true
-                                        Quickshell.execDetached(modelData.cmd)
-                                        root.visible = false
-                                    }
-                                }
-                            }
-                            NumberAnimation {
-                                id: holdCancelAnim
-                                target: holdArea
-                                property: "holdProgress"
-                                to: 0
-                                duration: 180
-                                easing.type: Easing.OutQuad
-                            }
-
-                            onPressed: {
-                                triggered = false
-                                if (modelData.dangerous) {
-                                    holdCancelAnim.stop()
-                                    holdAnim.from = holdProgress
-                                    holdAnim.duration = Math.max(120, Math.round(900 * (1 - holdProgress)))
-                                    holdAnim.start()
-                                }
-                            }
+                            property bool fired: false
+                            onPressed: { fired = false; holdProgress = 0; if (modelData.dangerous) holdTimer.restart() }
                             onReleased: {
-                                if (!modelData.dangerous) {
-                                    if (containsMouse && !triggered) {
-                                        triggered = true
-                                        Quickshell.execDetached(modelData.cmd)
-                                        root.visible = false
-                                    }
-                                    holdProgress = 0
-                                    return
-                                }
-                                if (!triggered) {
-                                    holdAnim.stop()
-                                    holdCancelAnim.start()
-                                }
+                                if (modelData.dangerous) { holdTimer.stop(); holdProgress = 0; return }
+                                if (!fired) { fired = true; root.runAction(modelData.cmd) }
                             }
-                            onCanceled: {
-                                holdAnim.stop()
-                                triggered = false
-                                holdCancelAnim.start()
+                            onCanceled: { holdTimer.stop(); holdProgress = 0; fired = false }
+                            Timer {
+                                id: holdTimer; interval: 16; repeat: true
+                                onTriggered: {
+                                    if (!holdArea.pressed) { stop(); holdArea.holdProgress = 0; return }
+                                    holdArea.holdProgress = Math.min(1, holdArea.holdProgress + (16 / root.holdDuration))
+                                    if (holdArea.holdProgress >= 1 && !holdArea.fired) {
+                                        holdArea.fired = true; stop(); root.runAction(modelData.cmd); holdArea.holdProgress = 0
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+
+            Item { Layout.fillHeight: true }
         }
     }
 }

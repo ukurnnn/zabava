@@ -5,26 +5,16 @@ import Quickshell.Wayland
 
 PanelWindow {
     id: root
-    anchors {
-        top: true
-        right: true
-    }
+    anchors { top: true; right: true }
     color: "transparent"
-    visible: false
+    visible: NotificationService.history.length > 0
     exclusiveZone: 0
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-notifications"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-    implicitWidth: 380
-    implicitHeight: popupColumn.implicitHeight + 16
-
-    Connections {
-        target: NotificationService.history
-        function onCountChanged() {
-            root.visible = NotificationService.history.count > 0
-        }
-    }
+    implicitWidth: 390
+    implicitHeight: Math.min(popupColumn.implicitHeight + 16, 520)
 
     Column {
         id: popupColumn
@@ -33,125 +23,72 @@ PanelWindow {
         anchors.topMargin: 8
         anchors.rightMargin: 8
         spacing: 8
+        width: 374
 
         Repeater {
-            model: NotificationService.history
-
+            model: NotificationService.history.slice(0, 5)
             delegate: Rectangle {
                 required property var modelData
-                required property int index
-
-                width: 360
-                height: contentLayout.implicitHeight + 24
+                property int notifId: modelData.id
+                width: 374
                 radius: 12
                 color: Theme.glassPanelStrong
-                border.color: modelData.urgency === 2 ? Theme.red : Theme.glassBorderStrong
-                border.width: modelData.urgency === 2 ? 2 : 1
-
-                opacity: 0
-                scale: 0.985
-                property real slideOffset: 24
-                Component.onCompleted: { opacity = 1; slideOffset = 0; scale = 1 }
-                transform: Translate { x: slideOffset; Behavior on x { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } } }
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-                Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutCubic } }
-                Behavior on color { ColorAnimation { duration: 180 } }
-                Behavior on border.color { ColorAnimation { duration: 180 } }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.margins: 1
-                    height: Math.max(0, parent.height * 0.4)
-                    radius: Math.max(0, parent.radius - 1)
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: Theme.glassHighlightSoft }
-                        GradientStop { position: 1.0; color: "transparent" }
-                    }
-                }
-
-                Timer {
-                    interval: 8000
-                    running: modelData.urgency !== 2
-                    repeat: false
-                    onTriggered: NotificationService.dismiss(modelData.id)
-                }
+                border.color: modelData.urgency === 2 ? Theme.red : Theme.glassBorder
+                border.width: 1
+                implicitHeight: contentLayout.implicitHeight + 20
 
                 ColumnLayout {
                     id: contentLayout
                     anchors.fill: parent
-                    anchors.margins: 12
+                    anchors.margins: 10
                     spacing: 6
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
-
-                        Text {
-                            text: "󰂚"
-                            color: Theme.mediaAccentActive ? Theme.mediaAccent : Theme.accent
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 14
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
-
+                        spacing: 6
                         Text {
                             Layout.fillWidth: true
-                            text: modelData.appName
-                            color: Theme.mediaAccentActive ? Theme.mediaAccent : Theme.accent
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 12
-                            font.bold: true
+                            text: (modelData.appName || "App") + ((modelData.count || 1) > 1 ? " • " + modelData.count : "")
+                            color: Theme.accent
+                            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.bold: true
                             elide: Text.ElideRight
-                            Behavior on color { ColorAnimation { duration: 200 } }
                         }
-
+                        Text {
+                            text: "очистить"
+                            color: clearAppArea.containsMouse ? Theme.red : Theme.fgMuted
+                            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9
+                            MouseArea { id: clearAppArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationService.dismissApp(modelData.appName) }
+                        }
                         Text {
                             text: "󰅖"
                             color: closeArea.containsMouse ? Theme.red : Theme.overlay
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 14
-                            Behavior on color { ColorAnimation { duration: 150 } }
-
-                            MouseArea {
-                                id: closeArea
-                                anchors.fill: parent
-                                anchors.margins: -4
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: NotificationService.dismiss(modelData.id)
-                            }
+                            font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
+                            MouseArea { id: closeArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: NotificationService.dismiss(notifId) }
                         }
                     }
 
-                    Text {
-                        Layout.fillWidth: true
-                        visible: modelData.summary !== ""
-                        text: modelData.summary
-                        color: Theme.fg
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 14
-                        font.bold: true
-                        elide: Text.ElideRight
-                    }
+                    Text { Layout.fillWidth: true; visible: (modelData.summary || "") !== ""; text: modelData.summary || ""; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12; font.bold: true; wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight }
+                    Text { Layout.fillWidth: true; visible: (modelData.body || "") !== ""; text: modelData.body || ""; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; wrapMode: Text.WordWrap; maximumLineCount: 3; elide: Text.ElideRight }
 
-                    Text {
+                    Flow {
                         Layout.fillWidth: true
-                        visible: modelData.body !== ""
-                        text: modelData.body
-                        color: Theme.fgMuted
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 12
-                        wrapMode: Text.WordWrap
-                        maximumLineCount: 3
-                        elide: Text.ElideRight
+                        spacing: 6
+                        visible: (modelData.actions || []).length > 0
+                        Repeater {
+                            model: modelData.actions || []
+                            delegate: Rectangle {
+                                required property var modelData
+                                radius: 8; height: 24; width: actionText.implicitWidth + 14
+                                color: actionArea.containsMouse ? Theme.accent : Theme.surface1
+                                border.color: Theme.glassBorder; border.width: 1
+                                Text { id: actionText; anchors.centerIn: parent; text: modelData.text || modelData.identifier || "Action"; color: actionArea.containsMouse ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                MouseArea {
+                                    id: actionArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: NotificationService.invokeAction(notifId, modelData.identifier)
+                                }
+                            }
+                        }
                     }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: NotificationService.dismiss(modelData.id)
                 }
             }
         }
