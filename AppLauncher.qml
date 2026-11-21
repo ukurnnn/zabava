@@ -256,8 +256,10 @@ PanelWindow {
                 displayItems = [{ type: "info", icon: "󰃬", title: "Вычисление...", subtitle: expr }]
                 calcProc.expr = expr
                 calcProc.command = ["python3", "-c",
-                    "import math\n" +
+                    "import math, re\n" +
                     "expr = " + JSON.stringify(expr) + "\n" +
+                    "expr = expr.replace('×', '*').replace('·', '*').replace('÷', '/').replace('−', '-').replace(',', '.')\n" +
+                    "expr = re.sub(r'(?<=\\d)\\s*[xX]\\s*(?=\\d|[\\(\\.])', '*', expr)\n" +
                     "allowed = {k:getattr(math,k) for k in dir(math) if not k.startswith('_')}\n" +
                     "allowed.update({'abs':abs,'round':round,'min':min,'max':max,'pow':pow,'sum':sum,'int':int,'float':float})\n" +
                     "try:\n" +
