@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 export XDG_SESSION_TYPE=wayland
 export QT_QPA_PLATFORM=wayland
@@ -21,7 +21,10 @@ if [ -z "$GREETD_SOCK" ]; then
 fi
 
 # Временный конфиг Niri, который запускает greeter и выходит после него
-TEMP_CONFIG=$(mktemp)
+TEMP_CONFIG="$(mktemp --suffix=.kdl)"
+cleanup() { rm -f -- "$TEMP_CONFIG"; }
+trap cleanup EXIT
+
 cat >"$TEMP_CONFIG" <<'NIRI_EOF'
 hotkey-overlay {
     skip-at-startup
@@ -53,7 +56,7 @@ output "DP-3" {
 // Лог quickshell пишем в каталог greeter — по нему видно, почему не стартует UI.
 // После выхода qs гасим niri: greetd запустит сессию юзера только когда
 // завершится процесс гритера (launch.sh → niri → qs), см. greetd-ipc(7).
-spawn-at-startup "sh" "-c" "qs -p /etc/xdg/quickshell/greeter/shell.qml >>/var/lib/greeter/quickshell.log 2>&1; niri msg action quit --skip-confirmation"
+spawn-at-startup "sh" "-c" "mkdir -p /var/lib/greeter && qs -p /etc/xdg/quickshell/greeter/shell.qml >>/var/lib/greeter/quickshell.log 2>&1; niri msg action quit --skip-confirmation"
 NIRI_EOF
 
 exec niri -c "$TEMP_CONFIG"

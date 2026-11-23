@@ -52,11 +52,15 @@ Dependencies vary by module. The installer can print a full grouped list:
 
 ### Quick (Arch Linux)
 
+Clone the repository to a neutral location, then install/link it into your Quickshell config directory:
+
 ```bash
-git clone <repo-url> ~/.config/quickshell
-cd ~/.config/quickshell
+git clone https://github.com/<owner>/<repo>.git ~/src/quickshell-config
+cd ~/src/quickshell-config
 ./install.sh --all
 ```
+
+> Replace the clone URL with your repository URL/fork. The installer links or copies the source directory to `${XDG_CONFIG_HOME:-~/.config}/quickshell` by default. Do not clone directly into the target config directory if you plan to use `--link`.
 
 `--all` installs dependencies (auto-detects `pacman`, uses `yay`/`paru` for AUR packages when available) and symlinks the repo to `~/.config/quickshell`.
 
@@ -79,19 +83,25 @@ Common usage:
 ```
 
 - Dependency auto-install currently targets **Arch Linux** (`pacman`, optional AUR helper). On other distributions, run `--print-deps` and install equivalents manually.
-- `--link`/`--copy` back up an existing `~/.config/quickshell` before replacing it.
+- `--link`/`--copy` refuse to operate when source and target are the same path, and create a timestamped backup before replacing an existing target.
 
 ### Manual setup
 
 1. Install dependencies for the modules you use (see `./install.sh --print-deps`).
-2. Place this repository at `~/.config/quickshell` (or any path you prefer).
-3. Ensure required services are running (examples):
+2. Clone this repository to a neutral directory (for example `~/src/quickshell-config`).
+3. Link or copy it to `${XDG_CONFIG_HOME:-~/.config}/quickshell`:
+   ```bash
+   ./install.sh --link
+   # or
+   ./install.sh --copy
+   ```
+4. Ensure required services are running (examples):
    - `NetworkManager`
    - user session: `pipewire`, `pipewire-pulse`, `wireplumber`
-4. (Optional) Start clipboard history watcher: `wl-paste --watch cliphist store`
-5. Launch:
+5. (Optional) Start clipboard history watcher: `wl-paste --watch cliphist store`
+6. Launch:
    ```bash
-   qs -p ~/.config/quickshell/shell.qml
+   qs -p "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/shell.qml"
    # or, if installed as the default quickshell config directory:
    qs -c quickshell
    ```
@@ -101,26 +111,50 @@ Common usage:
 - Run the shell with `qs -p /path/to/quickshell/shell.qml`.
 - **Control Center IPC toggle** (used by Niri keybind in this setup):
   ```bash
-  qs -p ~/.config/quickshell ipc call controlcenter toggle
+  qs -p "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell" ipc call controlcenter toggle
   ```
   Example Niri bind:
   ```kdl
-  Mod+A { spawn "qs" "-p" "/home/<user>/.config/quickshell" "ipc" "call" "controlcenter" "toggle"; }
+  Mod+A { spawn "qs" "-p" "~/.config/quickshell" "ipc" "call" "controlcenter" "toggle"; }
   ```
 - Theming presets are managed from the Control Center (Matugen presets, wallpaper-derived theme, custom palettes). Matugen/wallpaper themes update `${XDG_CACHE_HOME:-~/.cache}/quickshell/matugen-colors.json`.
 - Bar style/presets and color preset state are persisted in XDG config/state files (see Configuration files below).
 
 ## Greeter (optional, greetd)
 
-The greeter lives in `greeter/` and is installed system-wide by:
+The greeter lives in `greeter/` and is intended for a `greetd` + Niri + Quickshell setup.
+
+### What gets installed system-wide
+
+`./install.sh --greeter` (or `cd greeter && ./deploy.sh --install`) installs:
+
+| Path | Purpose |
+|---|---|
+| `/etc/xdg/quickshell/greeter/launch.sh` | Greeter launcher run by greetd |
+| `/etc/xdg/quickshell/greeter/shell.qml` | Greeter UI |
+| `/etc/polkit-1/rules.d/50-greeter.rules` | Polkit rule for greeter power actions |
+
+`deploy.sh` also restarts polkit (best effort) and prints manual `greetd` enable/rollback instructions. It does **not** automatically enable/disable display managers.
+
+### Polkit rule (from code)
+
+`greeter/50-greeter.rules` allows user `greeter` to perform these login1 actions without password authentication:
+
+- `org.freedesktop.login1.reboot`
+- `org.freedesktop.login1.reboot-multiple-sessions`
+- `org.freedesktop.login1.power-off`
+- `org.freedesktop.login1.power-off-multiple-sessions`
+
+Review the rule before installing on multi-user or security-sensitive systems.
+
+### Uninstall
 
 ```bash
-./install.sh --greeter
-# or
-cd greeter && ./deploy.sh
+cd greeter
+./deploy.sh --uninstall
 ```
 
-This installs files to `/etc/xdg/quickshell/greeter`, adds a polkit rule, and prints instructions for enabling `greetd`. Review the scripts before running on your system.
+This removes only the known greeter files/rule managed by `deploy.sh`. If you enabled `greetd`, disable it and re-enable your display manager manually.
 
 ## Configuration files
 

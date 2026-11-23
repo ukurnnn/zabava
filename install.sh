@@ -40,8 +40,8 @@ Usage:
 Options:
   -h, --help            Show this help
   -d, --deps            Install dependencies
-  -l, --link            Symlink this repo to ~/.config/quickshell
-  -c, --copy            Copy this repo to ~/.config/quickshell
+  -l, --link            Symlink this repo to the target config dir
+  -c, --copy            Copy this repo to the target config dir
   -g, --greeter         Install the greetd greeter (requires sudo)
   -a, --all             Install deps and link config (recommended)
   -y, --yes             Assume "yes" for prompts where safe
@@ -60,6 +60,7 @@ Examples:
 Notes:
   - Dependency auto-install currently supports Arch Linux (pacman, optional AUR helper).
     On other distros, use --print-deps and install equivalents manually.
+  - Clone the repo to a neutral directory, then use --link/--copy to install into the target config directory.
   - --greeter modifies system configuration under /etc and /var/lib/greeter.
 EOF
 }
@@ -89,7 +90,7 @@ confirm() {
 # Dependency groups (Arch package names; alternatives separated by '|')
 # Core runtime / shell / utilities
 DEPS_CORE=(
-  quickshell|quickshell-git
+  "quickshell|quickshell-git"
   niri
   qt6-base qt6-declarative qt6-wayland qt6-svg qt6-5compat
   bash coreutils grep gawk sed findutils procps-ng iproute2 util-linux
@@ -112,9 +113,9 @@ DEPS_CLIPBOARD=(
 )
 # Theming / wallpaper integration
 DEPS_THEMING=(
-  matugen|matugen-bin
+  "matugen|matugen-bin"
   waypaper
-  awww|awww-git|swww
+  "awww|awww-git|swww"
 )
 # Lock screen / auth helpers
 DEPS_LOCK=(
@@ -122,7 +123,7 @@ DEPS_LOCK=(
 )
 # Fonts / icons
 DEPS_FONTS=(
-  ttf-jetbrains-mono-nerd|nerd-fonts-jetbrains-mono
+  "ttf-jetbrains-mono-nerd|nerd-fonts-jetbrains-mono"
   noto-fonts-emoji
 )
 # Optional tools used by best-effort features
@@ -386,7 +387,11 @@ backup_path() {
   local p="$1"
   local ts
   ts="$(date +%Y%m%d-%H%M%S)"
-  echo "${p}.bak.${ts}"
+  local bak="${p}.bak.${ts}"
+  while [[ -e "$bak" || -L "$bak" ]]; do
+    bak="${bak}.$RANDOM"
+  done
+  echo "$bak"
 }
 
 ensure_parent_dir() {
@@ -396,12 +401,12 @@ ensure_parent_dir() {
 }
 
 link_config() {
-  local src="$SCRIPT_DIR"
-  local dst="$TARGET_DIR"
+  local src dst
+  src="$(cd -- "$SCRIPT_DIR" && pwd -P)"
+  dst="$(realpath -m -- "$TARGET_DIR")"
 
-  if [[ "$src" -ef "$dst" ]]; then
-    ok "Config already at target: $dst"
-    return 0
+  if [[ "$src" == "$dst" ]] || { [[ -e "$dst" || -L "$dst" ]] && [[ "$src" -ef "$dst" ]]; }; then
+    die "Source and target are the same path: $dst. Clone/use the repo from a neutral directory and link it into the target config directory."
   fi
 
   ensure_parent_dir "$dst"
@@ -411,7 +416,7 @@ link_config() {
     bak="$(backup_path "$dst")"
     warn "Target exists: $dst"
     if confirm "Backup to $bak and replace with symlink?"; then
-      run mv "$dst" "$bak"
+      run mv -- "$dst" "$bak"
       ok "Backed up to $bak"
     else
       warn "Skipping link step."
@@ -419,17 +424,17 @@ link_config() {
     fi
   fi
 
-  run ln -s "$src" "$dst"
+  run ln -s -- "$src" "$dst"
   ok "Linked $dst -> $src"
 }
 
 copy_config() {
-  local src="$SCRIPT_DIR"
-  local dst="$TARGET_DIR"
+  local src dst
+  src="$(cd -- "$SCRIPT_DIR" && pwd -P)"
+  dst="$(realpath -m -- "$TARGET_DIR")"
 
-  if [[ "$src" -ef "$dst" ]]; then
-    ok "Source and target are the same path: $dst"
-    return 0
+  if [[ "$src" == "$dst" ]] || { [[ -e "$dst" || -L "$dst" ]] && [[ "$src" -ef "$dst" ]]; }; then
+    die "Source and target are the same path: $dst. Use a neutral source directory when copying into the target config directory."
   fi
 
   ensure_parent_dir "$dst"
@@ -439,7 +444,7 @@ copy_config() {
     bak="$(backup_path "$dst")"
     warn "Target exists: $dst"
     if confirm "Backup to $bak and copy config?"; then
-      run mv "$dst" "$bak"
+      run mv -- "$dst" "$bak"
       ok "Backed up to $bak"
     else
       warn "Skipping copy step."
@@ -447,12 +452,14 @@ copy_config() {
     fi
   fi
 
-  run mkdir -p "$dst"
+  run mkdir -p -- "$dst"
   if command -v rsync >/dev/null 2>&1; then
-    run rsync -a --exclude '.git' "$src/" "$dst/"
+    run rsync -a --exclude '.git' -- "$src/" "$dst/"
   else
-    run cp -a "$src/." "$dst/"
-    run rm -rf "$dst/.git" 2>/dev/null || true
+    run cp -a -- "$src/." "$dst/"
+    if [[ -e "$dst/.git" || -L "$dst/.git" ]]; then
+      run rm -rf -- "$dst/.git"
+    fi
   fi
   ok "Copied config to $dst"
 }
@@ -462,19 +469,21 @@ install_greeter() {
   [[ -f "$deploy" ]] || die "Greeter deploy script not found: $deploy"
 
   warn "This will install files into /etc/xdg/quickshell/greeter and /etc/polkit-1/rules.d (sudo)."
+  warn "Polkit rule allows login1 reboot/power-off actions for user 'greeter' (see greeter/50-greeter.rules)."
   if ! confirm "Proceed with greeter installation?"; then
     warn "Skipping greeter installation."
     return 0
   fi
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    info "[dry] would run: (cd '$SCRIPT_DIR/greeter' && ./deploy.sh)"
+    info "[dry] would run: (cd '$SCRIPT_DIR/greeter' && bash ./deploy.sh --install)"
     return 0
   fi
 
-  (cd "$SCRIPT_DIR/greeter" && bash ./deploy.sh)
+  ( cd -- "$SCRIPT_DIR/greeter" && bash ./deploy.sh --install )
   ok "Greeter installed."
   echo "  To enable greetd instead of your current display manager, follow the instructions printed above."
+  echo "  To uninstall: (cd '$SCRIPT_DIR/greeter' && bash ./deploy.sh --uninstall)"
 }
 
 post_install_notes() {
