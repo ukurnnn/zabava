@@ -41,7 +41,7 @@ Dependencies vary by module. The installer can print a full grouped list:
 | Audio & media | `pipewire`, `wireplumber`/`pipewire-pulse`, `wpctl`/Pulse tools, `cava`, MPRIS players | Volume, audio popup/page, media, Cava, headphone battery (best-effort) |
 | Network | `networkmanager` (`nmcli`), `ip` | Network module/popup/page |
 | Clipboard | `wl-clipboard` (`wl-copy`), `cliphist` | Clipboard menu/history |
-| Theming | `matugen`, `waypaper` (optional, for wallpaper-derived preset), `awww` (lock screen wallpaper query) | Color presets, wallpaper theme, lock screen background lookup |
+| Theming / wallpaper | `matugen`, `waypaper` (optional, for wallpaper-derived preset), `awww`/`swww` (used by standalone `LockScreen.qml` wallpaper lookup) | Color presets, wallpaper theme, lock screen background lookup |
 | Fonts/icons | JetBrainsMono Nerd Font (+ emoji font recommended) | Icons/glyphs across UI |
 | Optional | `upower`, `headsetcontrol`, `playerctl`, `nm-connection-editor`, `polkit` | Best-effort battery fallbacks, media helper, Wi-Fi fallback, greeter/system actions |
 | Greeter | `greetd`, `niri`, `quickshell`, `systemd`, `polkit` | `greeter/` deployment and session/login UI |
@@ -239,11 +239,11 @@ To reset a specific area, remove the corresponding runtime file and restart/relo
 ## Troubleshooting
 
 - **Missing icons/glyphs/squares**: install a Nerd Font (JetBrainsMono Nerd Font recommended) and an emoji font; restart Quickshell after font changes.
-- **No audio controls/devices**: verify PipeWire/WirePlumber user services are running. This config uses `wpctl` for source mute toggles and `pactl` for sink/source enumeration and default device detection in audio UI.
+- **No audio controls/devices**: verify PipeWire/WirePlumber user services are running. Current code uses `wpctl set-mute @DEFAULT_SOURCE@ toggle` for microphone mute toggles and `pactl get-default-sink`/`pactl info`/`pactl list sinks` for sink enumeration/default detection in audio UI (see `VolumeModule.qml`, `ControlCenter.qml`, `AudioPopup.qml`).
 - **No network info**: verify `NetworkManager` is running and `nmcli` is available.
 - **Clipboard history empty**: start a watcher such as `wl-paste --watch cliphist store`.
 - **Wallpaper theme not applied**: check `waypaper` config (`~/.config/waypaper/config.ini`) and `matugen` availability.
-- **Lock screen wallpaper missing**: `LockScreen.qml` queries `awww query`; install/configure `awww` or `swww` as appropriate for your wallpaper daemon setup.
+- **Lock screen wallpaper missing**: `LockScreen.qml` is a standalone lock screen component in the repo and queries wallpaper via `awww query | grep ...`; it is not wired by `shell.qml`. If you use it, install/configure `awww` (or adapt the command to your wallpaper daemon). TODO: confirm whether lock screen should be an officially supported/integrated feature or remain optional.
 
 ## Uninstall
 

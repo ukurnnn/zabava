@@ -148,6 +148,7 @@ Dependency groups (module coverage)
   - pipewire, pipewire-pulse/wireplumber, pactl(wpctl/libpulse tools), cava
   - (runtime) MPRIS-capable players for media controls
   Modules: volume, audio popup, sound/media page, headphone battery (PipeWire/PulseAudio), MPRIS, Cava visualizer
+  Commands used by current code: wpctl set-mute @DEFAULT_SOURCE@ toggle; pactl get-default-sink/info/list sinks
 
 [Network]
   - networkmanager (nmcli), iproute2 (ip)
@@ -161,7 +162,7 @@ Dependency groups (module coverage)
 [Theming & wallpaper]
   - matugen (color generation)
   - waypaper (config source for wallpaper-derived theme, optional but used by "Из обоев")
-  - awww (queried by lock screen wallpaper integration)
+  - awww/swww (queried by standalone LockScreen.qml wallpaper integration; optional)
   Modules: Theme/matugen colors, Control Center color presets (matugen, wallpaper, custom)
 
 [Fonts / icons]
