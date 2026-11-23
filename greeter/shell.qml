@@ -1,5 +1,5 @@
 // self-contained Quickshell Greeter for greetd
-// Run via: qs -p /home/zrtt/.config/quickshell/greeter/shell.qml
+// Run via: qs -p /path/to/quickshell/greeter/shell.qml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
