@@ -44,7 +44,7 @@ Item {
         id: weatherProc
         command: ["bash", "-c",
             "curl -s --max-time 10 'https://wttr.in/" +
-            (root.city !== "" ? encodeURIComponent(root.city) : "") + "?format=%C|%t|%f|%h|%w|%l' 2>/dev/null"
+            (root.city !== "" ? encodeURIComponent(root.city) : "") + "?M&format=%C|%t|%f|%h|%w|%l&lang=ru' 2>/dev/null"
         ]
         running: true
 

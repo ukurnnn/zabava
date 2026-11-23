@@ -179,7 +179,7 @@ Adjust paths/binds to your local setup.
 
 Weather implementation is code-backed in `WeatherModule.qml` / `WeatherPopup.qml`:
 
-- **Provider/request**: `curl -s --max-time 10 'https://wttr.in/<city-or-empty>?format=%C|%t|%f|%h|%w|%l'`
+- **Provider/request**: `curl -s --max-time 10 'https://wttr.in/<city-or-empty>?M&format=%C|%t|%f|%h|%w|%l&lang=ru'` (`M` forces metric units; `lang=ru` requests Russian condition text)
 - **API key**: none used by current code.
 - **City**: optional `city` property in `WeatherModule.qml`; empty value uses wttr.in default/location behavior as returned by wttr.in.
 - **Refresh**: every 15 minutes (`Timer interval: 15 * 60 * 1000`) and on popup open when stale/missing.
