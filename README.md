@@ -23,7 +23,7 @@ A Quickshell-based desktop shell configuration (bar, launcher, popups, control c
 - `Theme.qml`, `BarConfig.qml`, `NiriService.qml`, `NotificationService.qml` — singletons/services
 - `greeter/` — greetd greeter (`shell.qml`, `launch.sh`, `deploy.sh`, polkit rule)
 - `install.sh` — dependency/config/greeter installer
-- State/config files: `bar-config.json`, `color-presets.json` (tracked), runtime-generated `matugen-colors.json`, `usage.json` (ignored)
+- Defaults in repo: `*.default.json`; runtime state/config/cache are created in XDG directories on first run
 
 ## Dependencies
 
@@ -107,8 +107,8 @@ Common usage:
   ```kdl
   Mod+A { spawn "qs" "-p" "/home/<user>/.config/quickshell" "ipc" "call" "controlcenter" "toggle"; }
   ```
-- Theming presets are managed from the Control Center (Matugen presets, wallpaper-derived theme, custom palettes). Matugen/wallpaper themes update `~/.config/quickshell/matugen-colors.json`.
-- Bar style/presets and color preset state are persisted in local config/state files.
+- Theming presets are managed from the Control Center (Matugen presets, wallpaper-derived theme, custom palettes). Matugen/wallpaper themes update `${XDG_CACHE_HOME:-~/.cache}/quickshell/matugen-colors.json`.
+- Bar style/presets and color preset state are persisted in XDG config/state files (see Configuration files below).
 
 ## Greeter (optional, greetd)
 
@@ -122,11 +122,25 @@ cd greeter && ./deploy.sh
 
 This installs files to `/etc/xdg/quickshell/greeter`, adds a polkit rule, and prints instructions for enabling `greetd`. Review the scripts before running on your system.
 
+## Configuration files
+
+Defaults are shipped in the repository as `*.default.json`. On first run, the shell falls back to defaults and creates runtime files in XDG directories.
+
+| File | Purpose | Default in repo | Runtime location |
+|---|---|---|---|
+| `bar-config.json` | Bar style, presets, module order/visibility | `bar-config.default.json` | `${XDG_CONFIG_HOME:-~/.config}/quickshell/bar-config.json` |
+| `color-presets.json` | Active color preset and wallpaper color mode | `color-presets.default.json` | `${XDG_CONFIG_HOME:-~/.config}/quickshell/color-presets.json` |
+| `ui-style.json` | Glass/style UI settings | `ui-style.default.json` | `${XDG_CONFIG_HOME:-~/.config}/quickshell/ui-style.json` |
+| `usage.json` | Launcher frecency/usage history | `usage.default.json` | `${XDG_STATE_HOME:-~/.local/state}/quickshell/usage.json` |
+| `matugen-colors.json` | Generated Matugen palette/cache | `matugen-colors.default.json` | `${XDG_CACHE_HOME:-~/.cache}/quickshell/matugen-colors.json` |
+
+To reset a specific area, remove the corresponding runtime file and restart/reload Quickshell; defaults will be used again.
+
 ## Notes
 
 - **Icons:** the UI relies heavily on Nerd Font glyphs (JetBrainsMono Nerd Font). Install a Nerd Font for correct icon rendering.
 - **Hardware/tool-dependent features:** headphone battery and some device details are best-effort and may be unavailable depending on devices/backends.
-- **State files:** `usage.json` and `matugen-colors.json` are runtime/user-local and ignored by git; `bar-config.json` and `color-presets.json` store preferences.
+- **State files:** runtime files live in XDG config/state/cache directories; repository `*.default.json` files are templates/defaults.
 - **Compositor:** this config is tailored for a Niri/Wayland environment (workspace/layout integration, IPC/keybind workflow).
 
 ## License

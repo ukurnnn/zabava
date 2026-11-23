@@ -30,8 +30,8 @@ ShellRoot {
 
     Process {
         id: themeProc
-        // HOME у greeter = "/" — берём matugen из /var/lib/greeter, затем из /home/zrtt
-        command: ["bash", "-c", "f=/var/lib/greeter/matugen-colors.json; [ -f \"$f\" ] || f=/home/zrtt/.config/quickshell/matugen-colors.json; cat \"$f\""]
+        // HOME у greeter может быть /var/lib/greeter; поддерживаем XDG cache/config и дефолт.
+        command: ["bash", "-c", "cache=\"${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/matugen-colors.json\"; cfg=\"${XDG_CONFIG_HOME:-$HOME/.config}/quickshell\"; for f in /var/lib/greeter/matugen-colors.json \"$cache\" \"$cfg/matugen-colors.json\" \"$cfg/matugen-colors.default.json\"; do [ -f \"$f\" ] && { cat \"$f\"; exit 0; }; done; exit 0"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {

@@ -38,7 +38,14 @@ Item {
         power:      { name: "Питание",       icon: "󰐥" }
     })
 
-    readonly property string configPath: Quickshell.env("HOME") + "/.config/quickshell/bar-config.json"
+    readonly property string repoDir: String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "")
+    readonly property string configHome: {
+        var xdg = Quickshell.env("XDG_CONFIG_HOME")
+        return (xdg && xdg !== "") ? xdg : (Quickshell.env("HOME") + "/.config")
+    }
+    readonly property string configDir: configHome + "/quickshell"
+    readonly property string configPath: configDir + "/bar-config.json"
+    readonly property string defaultConfigPath: repoDir + "/bar-config.default.json"
     readonly property int configVersion: 2
 
     readonly property var builtinPresets: ({
@@ -190,6 +197,37 @@ Item {
         save()
     }
 
+    property bool _loadedFromDefault: false
+
+    function applyConfigText(txt, fromDefault) {
+        var text = (txt || "").trim()
+        if (text === "") return false
+        try {
+            var obj = JSON.parse(text)
+            if (!obj || typeof obj !== "object") return false
+            var v = obj.configVersion !== undefined ? parseInt(obj.configVersion) : 1
+            if (isNaN(v) || v < 1) v = 1
+
+            if (obj.style) root.style = obj.style
+            if (obj.activePreset) root.activePreset = obj.activePreset
+            if (obj.userPresets && typeof obj.userPresets === "object") root.userPresets = obj.userPresets
+            if (obj.moduleOrder) root.moduleOrder = root.cloneOrder(obj.moduleOrder)
+            if (obj.hiddenModules && obj.hiddenModules.length !== undefined) root.hiddenModules = obj.hiddenModules
+
+            if (fromDefault) {
+                root._loadedFromDefault = true
+                root.save()
+            } else if (v < 2) {
+                root.ensureModuleOrder()
+                if (!root.hiddenModules) root.hiddenModules = []
+                root.save()
+            }
+            return true
+        } catch (e) {
+            return false
+        }
+    }
+
     FileView {
         id: cfgFile
         path: root.configPath
@@ -198,31 +236,23 @@ Item {
         printErrors: false
 
         onLoaded: {
-            var txt = cfgFile.text().trim()
-            if (txt === "") return
-            try {
-                var obj = JSON.parse(txt)
-                if (!obj || typeof obj !== "object") return
-                var v = obj.configVersion !== undefined ? parseInt(obj.configVersion) : 1
-                if (isNaN(v) || v < 1) v = 1
+            if (!root.applyConfigText(cfgFile.text(), false))
+                defaultCfgFile.reload()
+        }
 
-                if (obj.style) root.style = obj.style
-                if (obj.activePreset) root.activePreset = obj.activePreset
-                if (obj.userPresets && typeof obj.userPresets === "object") root.userPresets = obj.userPresets
-                if (obj.moduleOrder) root.moduleOrder = root.cloneOrder(obj.moduleOrder)
-                if (obj.hiddenModules && obj.hiddenModules.length !== undefined) root.hiddenModules = obj.hiddenModules
-
-                // v1 -> v2: ensure moduleOrder/hiddenModules exist
-                if (v < 2) {
-                    root.ensureModuleOrder()
-                    if (!root.hiddenModules) root.hiddenModules = []
-                    root.save()
-                }
-            } catch (e) {
-            }
+        onLoadFailed: function(error) {
+            defaultCfgFile.reload()
         }
 
         onFileChanged: cfgFile.reload()
+    }
+
+    FileView {
+        id: defaultCfgFile
+        path: root.defaultConfigPath
+        preload: false
+        printErrors: false
+        onLoaded: { root.applyConfigText(defaultCfgFile.text(), true) }
     }
 
     Process {
@@ -242,7 +272,9 @@ Item {
                 hiddenModules: (root.hiddenModules || []).slice()
             }
             var json = JSON.stringify(obj).replace(/'/g, "'\\''")
-            saveProc.command = ["bash", "-lc", "mkdir -p \"$HOME/.config/quickshell\" && printf '%s' '" + json + "' > " + configPath]
+            var dir = root.configDir.replace(/'/g, "'\\''")
+            var path = root.configPath.replace(/'/g, "'\\''")
+            saveProc.command = ["bash", "-lc", "mkdir -p '" + dir + "' && printf '%s' '" + json + "' > '" + path + "'"]
             saveProc.running = true
         } catch (e) {
         }

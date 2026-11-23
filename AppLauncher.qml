@@ -30,7 +30,19 @@ PanelWindow {
     property string mode: "apps"
     property var usageTimestamps: ({})
 
-    readonly property string usageFile: Quickshell.env("HOME") + "/.config/quickshell/usage.json"
+    readonly property string repoDir: String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "")
+    readonly property string configHome: {
+        var xdg = Quickshell.env("XDG_CONFIG_HOME")
+        return (xdg && xdg !== "") ? xdg : (Quickshell.env("HOME") + "/.config")
+    }
+    readonly property string configDir: configHome + "/quickshell"
+    readonly property string stateHome: {
+        var xdg = Quickshell.env("XDG_STATE_HOME")
+        return (xdg && xdg !== "") ? xdg : (Quickshell.env("HOME") + "/.local/state")
+    }
+    readonly property string stateDir: stateHome + "/quickshell"
+    readonly property string usageFile: stateDir + "/usage.json"
+    readonly property string defaultUsageFile: repoDir + "/usage.default.json"
 
     property var blacklist: [
         "avahi", "bssh", "bvnc", "qv4l2", "qvidcap",
@@ -49,29 +61,51 @@ PanelWindow {
         onTriggered: { if (allApps.length === 0) loadApps() }
     }
 
-    Process {
-        id: usageReadProc
-        command: ["cat", launcher.usageFile]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    var parsed = JSON.parse(this.text)
-                    launcher.usageTimestamps = (parsed && typeof parsed === "object") ? parsed : ({})
-                } catch (e) {
-                    launcher.usageTimestamps = ({})
-                }
-                launcher.loadApps()
+    FileView {
+        id: usageFileView
+        path: launcher.usageFile
+        preload: false
+        printErrors: false
+        onLoaded: {
+            try {
+                var parsed = JSON.parse(usageFileView.text())
+                launcher.usageTimestamps = (parsed && typeof parsed === "object") ? parsed : ({})
+            } catch (e) {
+                launcher.usageTimestamps = ({})
             }
+            launcher.loadApps()
+        }
+        onLoadFailed: function(error) { defaultUsageFileView.reload() }
+    }
+
+    FileView {
+        id: defaultUsageFileView
+        path: launcher.defaultUsageFile
+        preload: false
+        printErrors: false
+        onLoaded: {
+            try {
+                var parsed = JSON.parse(defaultUsageFileView.text())
+                launcher.usageTimestamps = (parsed && typeof parsed === "object") ? parsed : ({})
+            } catch (e) {
+                launcher.usageTimestamps = ({})
+            }
+            launcher.loadApps()
+        }
+        onLoadFailed: function(error) {
+            launcher.usageTimestamps = ({})
+            launcher.loadApps()
         }
     }
 
-    function loadUsage() { usageReadProc.running = true }
+    function loadUsage() { usageFileView.reload() }
 
     function saveUsage() {
         try {
             var json = JSON.stringify(usageTimestamps).replace(/'/g, "'\\''")
-            usageWriteProc.command = ["bash", "-lc", "mkdir -p \"$HOME/.config/quickshell\" && printf '%s' '" + json + "' > " + usageFile]
+            var dir = launcher.stateDir.replace(/'/g, "'\\''")
+            var path = launcher.usageFile.replace(/'/g, "'\\''")
+            usageWriteProc.command = ["bash", "-lc", "mkdir -p '" + dir + "' && printf '%s' '" + json + "' > '" + path + "'"]
             usageWriteProc.running = true
         } catch (e) {}
     }

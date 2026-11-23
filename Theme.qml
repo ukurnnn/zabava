@@ -12,24 +12,62 @@ Item {
 
     property var matugenColors: ({})
 
+    readonly property string repoDir: String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "")
+    readonly property string configHome: {
+        var xdg = Quickshell.env("XDG_CONFIG_HOME")
+        return (xdg && xdg !== "") ? xdg : (Quickshell.env("HOME") + "/.config")
+    }
+    readonly property string cacheHome: {
+        var xdg = Quickshell.env("XDG_CACHE_HOME")
+        return (xdg && xdg !== "") ? xdg : (Quickshell.env("HOME") + "/.cache")
+    }
+    readonly property string configDir: configHome + "/quickshell"
+    readonly property string cacheDir: cacheHome + "/quickshell"
+    readonly property string matugenColorsPath: cacheDir + "/matugen-colors.json"
+    readonly property string defaultMatugenColorsPath: repoDir + "/matugen-colors.default.json"
+
+    function loadMatugenText(txt, fromDefault) {
+        var text = (txt || "").trim()
+        if (text === "") return false
+        try {
+            var obj = JSON.parse(text)
+            if (!obj || typeof obj !== "object") return false
+            root.matugenColors = obj
+            if (fromDefault) {
+                // Seed cache from default; best-effort write.
+                matugenSeedProc.command = ["bash", "-lc", "mkdir -p '" + root.cacheDir.replace(/'/g, "'\\''") + "' && [ -f '" + root.matugenColorsPath.replace(/'/g, "'\\''") + "' ] || cp '" + root.defaultMatugenColorsPath.replace(/'/g, "'\\''") + "' '" + root.matugenColorsPath.replace(/'/g, "'\\''") + "'"]
+                matugenSeedProc.running = true
+            }
+            return true
+        } catch (e) {
+            return false
+        }
+    }
+
     FileView {
         id: colorsFile
-        path: Quickshell.env("HOME") + "/.config/quickshell/matugen-colors.json"
+        path: root.matugenColorsPath
         preload: true
         watchChanges: true
         printErrors: false
 
         onLoaded: {
-            var txt = colorsFile.text().trim()
-            if (txt === "") return
-            try {
-                root.matugenColors = JSON.parse(txt)
-            } catch (e) {
-            }
+            if (!root.loadMatugenText(colorsFile.text(), false))
+                defaultColorsFile.reload()
         }
-
+        onLoadFailed: function(error) { defaultColorsFile.reload() }
         onFileChanged: colorsFile.reload()
     }
+
+    FileView {
+        id: defaultColorsFile
+        path: root.defaultMatugenColorsPath
+        preload: false
+        printErrors: false
+        onLoaded: { root.loadMatugenText(defaultColorsFile.text(), true) }
+    }
+
+    Process { id: matugenSeedProc; command: ["bash", "-c", "true"]; running: false }
 
     function color(name) {
         return matugenColors[name] || fallbackColors[name] || "#cdd6f4"
@@ -73,11 +111,37 @@ Item {
     property color mediaAccent: accent
     property bool mediaAccentActive: false
 
-    readonly property string uiStylePath: Quickshell.env("HOME") + "/.config/quickshell/ui-style.json"
+    readonly property string uiStylePath: configDir + "/ui-style.json"
+    readonly property string defaultUiStylePath: repoDir + "/ui-style.default.json"
     readonly property int uiStyleVersion: 2
 
     function clampValue(v, lo, hi) {
         return Math.max(lo, Math.min(hi, Number(v)))
+    }
+
+    function applyUiStyleText(txt, fromDefault) {
+        var text = (txt || "").trim()
+        if (text === "") return false
+        try {
+            var obj = JSON.parse(text)
+            if (!obj || typeof obj !== "object") return false
+            var v = obj.uiStyleVersion !== undefined ? parseInt(obj.uiStyleVersion) : 1
+            if (isNaN(v) || v < 1) v = 1
+
+            if (obj.glassEnabled !== undefined) root.glassEnabled = obj.glassEnabled === true
+            if (obj.glassOpacity !== undefined) root.glassOpacity = clampValue(obj.glassOpacity, 0.5, 1.6)
+            if (obj.glassTint !== undefined) root.glassTint = clampValue(obj.glassTint, 0.4, 1.8)
+            if (obj.glassHighlightStrength !== undefined) root.glassHighlightStrength = clampValue(obj.glassHighlightStrength, 0.0, 2.0)
+            if (obj.glassBorderStrength !== undefined) root.glassBorderStrength = clampValue(obj.glassBorderStrength, 0.0, 2.0)
+            if (obj.glassBlur !== undefined) root.glassBlur = obj.glassBlur === true
+            if (obj.sheenEnabled !== undefined) root.sheenEnabled = obj.sheenEnabled === true
+            if (obj.glassPreset !== undefined) root.glassPreset = String(obj.glassPreset)
+
+            if (fromDefault || v < 2) root.saveUiStyle()
+            return true
+        } catch (e) {
+            return false
+        }
     }
 
     FileView {
@@ -88,28 +152,19 @@ Item {
         printErrors: false
 
         onLoaded: {
-            var txt = uiStyleFile.text().trim()
-            if (txt === "") return
-            try {
-                var obj = JSON.parse(txt)
-                if (!obj || typeof obj !== "object") return
-                var v = obj.uiStyleVersion !== undefined ? parseInt(obj.uiStyleVersion) : 1
-                if (isNaN(v) || v < 1) v = 1
-
-                if (obj.glassEnabled !== undefined) root.glassEnabled = obj.glassEnabled === true
-                if (obj.glassOpacity !== undefined) root.glassOpacity = clampValue(obj.glassOpacity, 0.5, 1.6)
-                if (obj.glassTint !== undefined) root.glassTint = clampValue(obj.glassTint, 0.4, 1.8)
-                if (obj.glassHighlightStrength !== undefined) root.glassHighlightStrength = clampValue(obj.glassHighlightStrength, 0.0, 2.0)
-                if (obj.glassBorderStrength !== undefined) root.glassBorderStrength = clampValue(obj.glassBorderStrength, 0.0, 2.0)
-                if (obj.glassBlur !== undefined) root.glassBlur = obj.glassBlur === true
-                if (obj.sheenEnabled !== undefined) root.sheenEnabled = obj.sheenEnabled === true
-                if (obj.glassPreset !== undefined) root.glassPreset = String(obj.glassPreset)
-
-                if (v < 2) root.saveUiStyle()
-            } catch (e) {
-            }
+            if (!root.applyUiStyleText(uiStyleFile.text(), false))
+                defaultUiStyleFile.reload()
         }
+        onLoadFailed: function(error) { defaultUiStyleFile.reload() }
         onFileChanged: uiStyleFile.reload()
+    }
+
+    FileView {
+        id: defaultUiStyleFile
+        path: root.defaultUiStylePath
+        preload: false
+        printErrors: false
+        onLoaded: { root.applyUiStyleText(defaultUiStyleFile.text(), true) }
     }
 
     Process {
@@ -135,7 +190,9 @@ Item {
     function saveUiStyle() {
         try {
             var json = JSON.stringify(uiStyleObject()).replace(/'/g, "'\\''")
-            uiStyleSaveProc.command = ["bash", "-lc", "mkdir -p \"$HOME/.config/quickshell\" && printf '%s' '" + json + "' > " + uiStylePath]
+            var dir = root.configDir.replace(/'/g, "'\\''")
+            var path = root.uiStylePath.replace(/'/g, "'\\''")
+            uiStyleSaveProc.command = ["bash", "-lc", "mkdir -p '" + dir + "' && printf '%s' '" + json + "' > '" + path + "'"]
             uiStyleSaveProc.running = true
         } catch (e) {
         }

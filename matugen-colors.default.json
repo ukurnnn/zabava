@@ -1,0 +1,15 @@
+{
+  "bg": "#1e1e2e",
+  "surface": "#313244",
+  "surface1": "#45475a",
+  "overlay": "#6c7086",
+  "fg": "#cdd6f4",
+  "fgMuted": "#a6adc8",
+  "accent": "#89b4fa",
+  "accent2": "#b4befe",
+  "green": "#a6e3a1",
+  "yellow": "#f9e2af",
+  "orange": "#fab387",
+  "red": "#f38ba8",
+  "mauve": "#cba6f7"
+}

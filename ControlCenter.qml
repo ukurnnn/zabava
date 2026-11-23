@@ -100,7 +100,20 @@ PanelWindow {
     property string themeApplyMessage: ""
     property string themeApplyName: ""
     property string themeWallpaperPath: ""
-    readonly property string colorPresetsFile: Quickshell.env("HOME") + "/.config/quickshell/color-presets.json"
+    readonly property string repoDir: String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "")
+    readonly property string configHome: {
+        var xdg = Quickshell.env("XDG_CONFIG_HOME")
+        return (xdg && xdg !== "") ? xdg : (Quickshell.env("HOME") + "/.config")
+    }
+    readonly property string cacheHome: {
+        var xdg = Quickshell.env("XDG_CACHE_HOME")
+        return (xdg && xdg !== "") ? xdg : (Quickshell.env("HOME") + "/.cache")
+    }
+    readonly property string configDir: configHome + "/quickshell"
+    readonly property string cacheDir: cacheHome + "/quickshell"
+    readonly property string colorPresetsFile: configDir + "/color-presets.json"
+    readonly property string defaultColorPresetsFile: repoDir + "/color-presets.default.json"
+    readonly property string matugenColorsPath: cacheDir + "/matugen-colors.json"
     readonly property var stonePalette: {"bg": "#2d3033", "surface": "#36393d", "surface1": "#41454a", "overlay": "#949494", "fg": "#e8e8e6", "fgMuted": "#bdbdb8", "accent": "#6f9eb0", "accent2": "#aba884", "green": "#8faa84", "yellow": "#aba884", "orange": "#949494", "red": "#c07a7a", "mauve": "#6f9eb0"}
     readonly property var colorPresets: [
         { id: "wallpaper",        name: "Из обоев",           mode: "dynamic", kind: "wallpaper", seed: "#7aa2f7" },
@@ -449,12 +462,14 @@ PanelWindow {
         root.themeApplyBusy = true
         root.themeApplyStatus = ""
         root.themeApplyMessage = "Применение: " + root.themeApplyName + "..."
-        var out = Quickshell.env("HOME") + "/.config/quickshell/matugen-colors.json"
+        var out = root.matugenColorsPath
         if (preset.kind === "custom" && preset.palette) {
             root.themeWallpaperPath = ""
             try {
                 var jsonPal = JSON.stringify(preset.palette).replace(/'/g, "'\\''")
-                matugenApplyProc.command = ["bash", "-lc", "mkdir -p \"$HOME/.config/quickshell\" && printf '%s' '" + jsonPal + "' > " + out]
+                var dir = root.cacheDir.replace(/'/g, "'\\''")
+                var outPath = out.replace(/'/g, "'\\''")
+                matugenApplyProc.command = ["bash", "-lc", "mkdir -p '" + dir + "' && printf '%s' '" + jsonPal + "' > '" + outPath + "'"]
                 matugenApplyProc.running = true
             } catch (e) {
                 root.themeApplyBusy = false
@@ -494,7 +509,9 @@ PanelWindow {
     function saveColorPresets() {
         try {
             var json = JSON.stringify({ active: root.activeColorPreset, wallpaperMode: root.wallpaperColorMode }).replace(/'/g, "'\\''")
-            colorPresetSaveProc.command = ["bash", "-lc", "mkdir -p \"$HOME/.config/quickshell\" && printf '%s' '" + json + "' > " + colorPresetsFile]
+            var dir = root.configDir.replace(/'/g, "'\\''")
+            var path = root.colorPresetsFile.replace(/'/g, "'\\''")
+            colorPresetSaveProc.command = ["bash", "-lc", "mkdir -p '" + dir + "' && printf '%s' '" + json + "' > '" + path + "'"]
             colorPresetSaveProc.running = true
         } catch (e) {}
     }
@@ -794,6 +811,18 @@ PanelWindow {
         }
     }
 
+    function applyColorPresetsText(txt, fromDefault) {
+        var text = (txt || "").trim()
+        if (text === "") return false
+        try {
+            var obj = JSON.parse(text)
+            if (obj && obj.active) root.activeColorPreset = obj.active
+            if (obj && obj.wallpaperMode) root.wallpaperColorMode = obj.wallpaperMode
+            if (fromDefault) saveColorPresets()
+            return true
+        } catch (e) { return false }
+    }
+
     FileView {
         id: colorPresetsView
         path: root.colorPresetsFile
@@ -801,14 +830,18 @@ PanelWindow {
         watchChanges: false
         printErrors: false
         onLoaded: {
-            var txt = colorPresetsView.text().trim()
-            if (txt === "") return
-            try {
-                var obj = JSON.parse(txt)
-                if (obj && obj.active) root.activeColorPreset = obj.active
-                if (obj && obj.wallpaperMode) root.wallpaperColorMode = obj.wallpaperMode
-            } catch (e) {}
+            if (!root.applyColorPresetsText(colorPresetsView.text(), false))
+                defaultColorPresetsView.reload()
         }
+        onLoadFailed: function(error) { defaultColorPresetsView.reload() }
+    }
+
+    FileView {
+        id: defaultColorPresetsView
+        path: root.defaultColorPresetsFile
+        preload: false
+        printErrors: false
+        onLoaded: { root.applyColorPresetsText(defaultColorPresetsView.text(), true) }
     }
 
     Process {
@@ -2795,7 +2828,7 @@ PanelWindow {
 
                                         Text {
                                             width: parent.width
-                                            text: "«Из обоев» и пресеты обновляют matugen-colors.json."
+                                            text: "«Из обоев» и пресеты обновляют кэш matugen-colors.json (XDG cache)."
                                             color: Theme.fgMuted
                                             font.family: "JetBrainsMono Nerd Font"
                                             font.pixelSize: 10
@@ -3369,7 +3402,7 @@ PanelWindow {
 
                                         Text {
                                             width: parent.width
-                                            text: "Стиль сохраняется в ui-style.json. «Из обоев» берёт палитру из waypaper (matugen image, dark/light)."
+                                            text: "Стиль сохраняется в ui-style.json в XDG config. «Из обоев» берёт палитру из waypaper (matugen image, dark/light)."
                                             color: Theme.fgMuted
                                             font.family: "JetBrainsMono Nerd Font"
                                             font.pixelSize: 10

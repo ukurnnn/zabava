@@ -9,6 +9,10 @@
 *.jsc
 .qmlls.ini
 
-# Local runtime/generated state
+# Local runtime/generated state (legacy repo-root paths; runtime now uses XDG dirs)
 usage.json
 matugen-colors.json
+bar-config.json
+color-presets.json
+ui-style.json
+.last-wallpaper-path

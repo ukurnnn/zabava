@@ -1,0 +1,12 @@
+{
+  "configVersion": 2,
+  "style": "islands",
+  "activePreset": "my_islands",
+  "userPresets": {},
+  "moduleOrder": {
+    "left": ["workspaces", "mpris"],
+    "center": ["clock"],
+    "right": ["volume", "sysmon", "layout", "network", "tray", "power"]
+  },
+  "hiddenModules": []
+}
