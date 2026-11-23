@@ -211,7 +211,7 @@ The greeter lives in `greeter/` and is intended for a `greetd` + Niri + Quickshe
 - `org.freedesktop.login1.power-off`
 - `org.freedesktop.login1.power-off-multiple-sessions`
 
-Review the rule before installing on multi-user or security-sensitive systems.
+This includes `*-multiple-sessions` actions, so greeter can reboot/power off even when other sessions are active. Review the rule before installing on multi-user or security-sensitive systems.
 
 ### Uninstall
 
