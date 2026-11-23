@@ -67,6 +67,7 @@ Item {
     property real glassBorderStrength: 1.1
     property bool glassBlur: false
     property bool sheenEnabled: true
+    property int uiRevision: 0
     property string glassPreset: "balanced"
 
     property color mediaAccent: accent
@@ -204,17 +205,7 @@ Item {
     Behavior on pink     { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
     Behavior on teal     { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
     Behavior on sky      { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassPanel { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassPanelStrong { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassCard { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassCardHover { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassIsland { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassBorder { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassBorderStrong { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassHighlight { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassHighlightSoft { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on glassShadow { ColorAnimation { duration: 250; easing.type: Easing.InOutQuad } }
-    Behavior on mediaAccent { ColorAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+    // Glass/media color behaviors disabled: they caused visible flicker in bar islands.
 
     property string current: "matugen"
     readonly property var themeNames: ["matugen"]
@@ -224,5 +215,10 @@ Item {
 
     function setTheme(name) {}
     function cycle(step) {}
+    function setMediaAccent(c, active) {
+        root.mediaAccent = c
+        root.mediaAccentActive = active === true
+        root.uiRevision = (root.uiRevision + 1) % 1000000
+    }
     function label(name) { return "Matugen" }
 }

@@ -42,11 +42,9 @@ Item {
 
     function updateMediaAccentState() {
         if (root.playing && root.mediaAccentHex !== "") {
-            Theme.mediaAccent = root.mediaAccentHex
-            Theme.mediaAccentActive = true
+            Theme.setMediaAccent(root.mediaAccentHex, true)
         } else {
-            Theme.mediaAccentActive = false
-            Theme.mediaAccent = Theme.accent
+            Theme.setMediaAccent(Theme.accent, false)
         }
     }
 

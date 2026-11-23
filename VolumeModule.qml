@@ -53,8 +53,9 @@ Item {
                 Text {
                     id: micText
                     text: {
-                        if (!root.sourceAudio) return "󰍬"
-                        return root.sourceAudio.muted ? "󰍭" : "󰍬"
+                        if (!root.sourceAudio) return "󰍬 ---"
+                        if (root.sourceAudio.muted) return "󰍭 " + Math.round(root.sourceAudio.volume * 100) + "%"
+                        return "󰍬 " + Math.round(root.sourceAudio.volume * 100) + "%"
                     }
                     color: (micArea.containsMouse || (root.popup && root.popup.visible)) ? Theme.yellow : (root.sourceAudio && root.sourceAudio.muted ? Theme.red : Theme.fg)
                     font.family: "JetBrainsMono Nerd Font"

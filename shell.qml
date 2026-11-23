@@ -135,8 +135,7 @@ ShellRoot {
             Behavior on width { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on radius { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
             Behavior on opacity { NumberAnimation { duration: 240; easing.type: Easing.InOutQuad } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
 
             Rectangle {
                 anchors.left: parent.left
@@ -173,8 +172,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {
@@ -244,8 +242,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {
@@ -296,8 +293,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {
@@ -306,7 +302,7 @@ ShellRoot {
                 radius: Math.max(0, parent.radius - 1)
                 visible: BarConfig.style === "islands"
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Theme.mediaAccentActive ? Qt.rgba(Theme.mediaAccent.r, Theme.mediaAccent.g, Theme.mediaAccent.b, Math.min(0.45, Theme.glassHighlight.a + 0.08)) : Theme.glassHighlight }
+                    GradientStop { position: 0.0; color: Theme.glassHighlight }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -400,8 +396,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {
@@ -442,8 +437,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {
@@ -484,8 +478,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {
@@ -526,8 +519,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {
@@ -567,8 +559,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {
@@ -608,8 +599,7 @@ ShellRoot {
             Behavior on anchors.topMargin { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: 220 } }
-            Behavior on border.color { ColorAnimation { duration: 220 } }
+            // color/border animations removed to avoid glass-mode flicker
             Behavior on radius { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
             Rectangle {

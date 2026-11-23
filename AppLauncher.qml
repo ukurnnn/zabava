@@ -243,8 +243,8 @@ PanelWindow {
             mode = "command"
             var cmd = t.substring(1).trim()
             displayItems = cmd.length === 0
-                ? [{ type: "info", icon: "󰆍", title: "Команда", subtitle: "> команда" }]
-                : [{ type: "command", icon: "󰆍", title: cmd, subtitle: "Запустить", cmd: cmd }]
+                ? [{ type: "info", icon: "󰆍", title: "Команда", subtitle: "> команда • Enter для запуска", badge: "CMD" }]
+                : [{ type: "command", icon: "󰆍", title: cmd, subtitle: "Запустить в shell", cmd: cmd, badge: "CMD" }]
             resultsList.currentIndex = 0
             return
         }
@@ -253,9 +253,9 @@ PanelWindow {
             mode = "calc"
             var expr = t.substring(1).trim()
             if (expr.length === 0) {
-                displayItems = [{ type: "info", icon: "󰃬", title: "Калькулятор", subtitle: "= выражение" }]
+                displayItems = [{ type: "info", icon: "󰃬", title: "Калькулятор", subtitle: "= 2+2 • поддержка *, /, x, ×, ÷", badge: "CALC" }]
             } else {
-                displayItems = [{ type: "info", icon: "󰃬", title: "Вычисление...", subtitle: expr }]
+                displayItems = [{ type: "info", icon: "󰃬", title: "Вычисление...", subtitle: expr, badge: "CALC" }]
                 calcProc.expr = expr
                 calcProc.command = ["python3", "-c",
                     "import math, re\n" +
@@ -270,6 +270,36 @@ PanelWindow {
                     "    print('__ERR__')\n"]
                 calcProc.running = true
             }
+            resultsList.currentIndex = 0
+            return
+        }
+
+        if (t.startsWith("?")) {
+            mode = "web"
+            var q = t.substring(1).trim()
+            displayItems = q.length === 0
+                ? [{ type: "info", icon: "󰜏", title: "Поиск в вебе", subtitle: "? запрос • откроется в браузере", badge: "WEB" }]
+                : [{ type: "web", icon: "󰜏", title: q, subtitle: "Искать в DuckDuckGo", query: q, badge: "WEB" }]
+            resultsList.currentIndex = 0
+            return
+        }
+
+        if (t.startsWith("/")) {
+            mode = "files"
+            var fq = t.substring(1).trim()
+            if (fq.length === 0) {
+                displayItems = [{ type: "info", icon: "󰈞", title: "Поиск файлов", subtitle: "/ имя или часть пути", badge: "FILE" }]
+                resultsList.currentIndex = 0
+                return
+            }
+            displayItems = [{ type: "info", icon: "󰈞", title: "Поиск файлов...", subtitle: fq, badge: "FILE" }]
+            fileProc.query = fq
+            var qEsc = shellQuote(fq)
+            fileProc.command = ["bash", "-lc",
+                "q=" + qEsc + "; " +
+                "if command -v fd >/dev/null 2>&1; then fd -H -i -t f --max-results 8 -- \"$q\" \"$HOME\" 2>/dev/null; " +
+                "else find \"$HOME\" -type f -iname '*\"$q\"*' 2>/dev/null | head -n 8; fi"]
+            fileProc.running = true
             resultsList.currentIndex = 0
             return
         }
@@ -300,6 +330,17 @@ PanelWindow {
             launcher.visible = false
             return
         }
+        if (item.type === "web") {
+            var url = "https://duckduckgo.com/?q=" + encodeURIComponent(item.query || "")
+            Quickshell.execDetached(["xdg-open", url])
+            launcher.visible = false
+            return
+        }
+        if (item.type === "file") {
+            Quickshell.execDetached(["xdg-open", item.path])
+            launcher.visible = false
+            return
+        }
     }
 
     Process {
@@ -312,10 +353,34 @@ PanelWindow {
                 if (launcher.mode !== "calc") return
                 var val = ((this.text || "").trim().split("\n")[0] || "")
                 if (val === "__ERR__" || val === "") {
-                    launcher.displayItems = [{ type: "info", icon: "󰃬", title: "Ошибка", subtitle: calcProc.expr }]
+                    launcher.displayItems = [{ type: "info", icon: "󰃬", title: "Ошибка", subtitle: calcProc.expr, badge: "CALC" }]
                 } else {
-                    launcher.displayItems = [{ type: "calc", icon: "󰃬", title: val, subtitle: calcProc.expr, expr: calcProc.expr, value: val }]
+                    launcher.displayItems = [{ type: "calc", icon: "󰃬", title: val, subtitle: calcProc.expr + " • Enter копировать", expr: calcProc.expr, value: val, badge: "CALC" }]
                 }
+                resultsList.currentIndex = 0
+            }
+        }
+    }
+
+    Process {
+        id: fileProc
+        property string query: ""
+        command: ["bash", "-c", "true"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (launcher.mode !== "files") return
+                var lines = (this.text || "").trim().split("\n")
+                var out = []
+                for (var i = 0; i < lines.length; i++) {
+                    var p = (lines[i] || "").trim()
+                    if (p === "") continue
+                    var parts = p.split("/")
+                    var name = parts[parts.length - 1] || p
+                    out.push({ type: "file", icon: "󰈔", title: name, subtitle: p, path: p, badge: "FILE" })
+                }
+                if (out.length === 0) out.push({ type: "info", icon: "󰈞", title: "Ничего не найдено", subtitle: fileProc.query, badge: "FILE" })
+                launcher.displayItems = out
                 resultsList.currentIndex = 0
             }
         }
@@ -416,7 +481,7 @@ PanelWindow {
                         anchors.fill: parent
                         anchors.leftMargin: 10
                         anchors.rightMargin: 10
-                        placeholderText: "Поиск  ·  >  ·  ="
+                        placeholderText: "Поиск  ·  > cmd  ·  = calc  ·  ? web  ·  / files"
                         placeholderTextColor: Theme.fgMuted
                         color: Theme.fg
                         font.family: "JetBrainsMono Nerd Font"
@@ -517,20 +582,41 @@ PanelWindow {
                                 Layout.alignment: Qt.AlignVCenter
                                 spacing: 0
 
-                                Text {
+                                RowLayout {
                                     Layout.fillWidth: true
-                                    text: isApp ? (modelData.app.name || "") : (modelData.title || "")
-                                    color: index === resultsList.currentIndex ? Theme.bg : Theme.fg
-                                    Behavior on color { ColorAnimation { duration: 120 } }
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 12
-                                    elide: Text.ElideRight
+                                    spacing: 6
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: isApp ? (modelData.app.name || "") : (modelData.title || "")
+                                        color: index === resultsList.currentIndex ? Theme.bg : Theme.fg
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        elide: Text.ElideRight
+                                    }
+                                    Rectangle {
+                                        visible: !!modelData.badge
+                                        radius: 5
+                                        color: index === resultsList.currentIndex ? Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.18) : Theme.surface1
+                                        border.color: index === resultsList.currentIndex ? "transparent" : Theme.glassBorder
+                                        implicitWidth: badgeText.implicitWidth + 8
+                                        implicitHeight: 16
+                                        Text {
+                                            id: badgeText
+                                            anchors.centerIn: parent
+                                            text: modelData.badge || ""
+                                            color: index === resultsList.currentIndex ? Theme.bg : Theme.fgMuted
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 8
+                                            font.bold: true
+                                        }
+                                    }
                                 }
 
                                 Text {
                                     Layout.fillWidth: true
                                     visible: text !== ""
-                                    text: isApp ? (modelData.app.genericName || "") : (modelData.subtitle || "")
+                                    text: isApp ? (modelData.app.genericName || modelData.app.comment || "") : (modelData.subtitle || "")
                                     color: index === resultsList.currentIndex ? Theme.bg : Theme.fgMuted
                                     font.family: "JetBrainsMono Nerd Font"
                                     font.pixelSize: 9

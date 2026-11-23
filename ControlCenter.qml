@@ -3407,47 +3407,62 @@ PanelWindow {
                                         id: ppCol
                                         anchors.fill: parent
                                         anchors.margins: 10
-                                        spacing: 8
+                                        spacing: 10
 
-                                        Row {
+                                        RowLayout {
                                             width: parent.width
                                             spacing: 8
                                             Text { text: "󰾅"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
-                                            Text { text: "Профиль питания"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+                                            Text { Layout.fillWidth: true; text: "Профиль питания"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true }
+                                            Text { text: PowerProfileService.labelFor(PowerProfileService.current); color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true }
                                         }
 
-                                        Row {
+                                        Item {
+                                            id: ccProfileSlider
                                             width: parent.width
-                                            spacing: 8
-                                            Repeater {
-                                                model: PowerProfileService.profiles || []
-                                                delegate: Rectangle {
-                                                    required property var modelData
-                                                    width: (ppCol.width - 16) / Math.max(1, (PowerProfileService.profiles || []).length)
-                                                    height: 42
-                                                    radius: 10
-                                                    property bool active: PowerProfileService.current === modelData
-                                                    color: active ? Theme.accent : (ppMouse.containsMouse ? Theme.surface1 : Theme.bg)
-                                                    border.color: active ? Theme.accent : Theme.surface1
-                                                    border.width: 1
-                                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                            height: 44
+                                            property var profiles: {
+                                                var p = PowerProfileService.profiles || []
+                                                var order = ["power-saver", "balanced", "performance"]
+                                                var out = []
+                                                for (var i = 0; i < order.length; i++) if (p.indexOf(order[i]) !== -1) out.push(order[i])
+                                                return out.length > 0 ? out : p
+                                            }
+                                            property int count: Math.max(1, profiles.length)
+                                            property int currentIndex: { var idx = profiles.indexOf(PowerProfileService.current); return idx >= 0 ? idx : 0 }
 
-                                                    Column {
-                                                        anchors.centerIn: parent
-                                                        spacing: 1
-                                                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.iconFor(modelData); color: active ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
-                                                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.labelFor(modelData); color: active ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
-                                                    }
-
-                                                    MouseArea {
-                                                        id: ppMouse
-                                                        anchors.fill: parent
-                                                        hoverEnabled: true
-                                                        cursorShape: Qt.PointingHandCursor
-                                                        onClicked: PowerProfileService.setProfile(modelData)
+                                            Rectangle { anchors.fill: parent; radius: 12; color: Theme.bg; border.color: Theme.surface1; border.width: 1 }
+                                            Rectangle {
+                                                property real segW: ccProfileSlider.width / ccProfileSlider.count
+                                                x: ccProfileSlider.currentIndex * segW + 3; y: 3; width: segW - 6; height: parent.height - 6
+                                                radius: 10; color: Theme.accent
+                                                Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                                            }
+                                            Row {
+                                                anchors.fill: parent
+                                                Repeater {
+                                                    model: ccProfileSlider.profiles
+                                                    delegate: Item {
+                                                        required property var modelData
+                                                        required property int index
+                                                        width: ccProfileSlider.width / ccProfileSlider.count
+                                                        height: ccProfileSlider.height
+                                                        property bool active: ccProfileSlider.currentIndex === index
+                                                        Column {
+                                                            anchors.centerIn: parent; spacing: 1
+                                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.iconFor(modelData); color: active ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
+                                                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.labelFor(modelData); color: active ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                                        }
+                                                        MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: PowerProfileService.setProfile(modelData) }
                                                     }
                                                 }
                                             }
+                                        }
+
+                                        Text {
+                                            width: parent.width
+                                            text: PowerProfileService.statusMessage
+                                            color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; wrapMode: Text.WordWrap
                                         }
                                     }
                                 }

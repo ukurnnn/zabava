@@ -68,13 +68,14 @@ PanelWindow {
             anchors.margins: 18
             spacing: 14
 
+            // Header
             RowLayout {
                 Layout.fillWidth: true
                 Text { text: "󰐥"; color: Theme.accent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 20 }
                 ColumnLayout {
                     Layout.fillWidth: true; spacing: 0
                     Text { text: "Питание"; color: Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16; font.bold: true }
-                    Text { text: "Профиль и действия системы"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10 }
+                    Text { text: PowerProfileService.available ? (PowerProfileService.labelFor(PowerProfileService.current) + " • " + PowerProfileService.backendLabel()) : "Профили недоступны"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; elide: Text.ElideRight; Layout.fillWidth: true }
                 }
                 Rectangle {
                     width: 28; height: 28; radius: 8
@@ -84,47 +85,116 @@ PanelWindow {
                 }
             }
 
+            // Power profile slider
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: ppCol.implicitHeight + 20
+                implicitHeight: profileCol.implicitHeight + 20
                 radius: 14
                 color: Theme.glassPanelSoft
                 border.color: Theme.glassBorder; border.width: 1
 
                 ColumnLayout {
-                    id: ppCol
-                    anchors.fill: parent; anchors.margins: 10; spacing: 8
-                    Text { text: "Профиль питания"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true }
-                    Text {
+                    id: profileCol
+                    anchors.fill: parent; anchors.margins: 10; spacing: 10
+
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: PowerProfileService.available ? PowerProfileService.statusMessage : PowerProfileService.statusMessage
-                        color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9; wrapMode: Text.WordWrap
+                        Text { text: "Профиль питания"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true }
+                        Item { Layout.fillWidth: true }
+                        Text {
+                            visible: PowerProfileService.busy
+                            text: "…"
+                            color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
+                        }
                     }
-                    Row {
-                        Layout.fillWidth: true; spacing: 8
+
+                    // Segmented slider
+                    Item {
+                        id: profileSlider
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
                         visible: PowerProfileService.available
-                        Repeater {
-                            model: PowerProfileService.profiles || []
-                            delegate: Rectangle {
-                                required property var modelData
-                                width: (ppCol.width - 16) / Math.max(1, (PowerProfileService.profiles || []).length)
-                                height: 52; radius: 12
-                                property bool active: PowerProfileService.current === modelData
-                                color: active ? Theme.accent : (ppMouse.containsMouse ? Theme.surface1 : Theme.surface)
-                                border.color: active ? Theme.accent : Theme.surface1; border.width: 1
-                                opacity: PowerProfileService.busy ? 0.65 : 1
-                                Column {
-                                    anchors.centerIn: parent; spacing: 2
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.iconFor(modelData); color: active ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 16 }
-                                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.labelFor(modelData); color: active ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                        opacity: PowerProfileService.busy ? 0.7 : 1
+
+                        property var profiles: {
+                            var p = PowerProfileService.profiles || []
+                            var order = ["power-saver", "balanced", "performance"]
+                            var out = []
+                            for (var i = 0; i < order.length; i++) if (p.indexOf(order[i]) !== -1) out.push(order[i])
+                            return out.length > 0 ? out : p
+                        }
+                        property int count: Math.max(1, profiles.length)
+                        property int currentIndex: {
+                            var idx = profiles.indexOf(PowerProfileService.current)
+                            return idx >= 0 ? idx : 0
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 12
+                            color: Theme.bg
+                            border.color: Theme.surface1; border.width: 1
+                        }
+
+                        Rectangle {
+                            id: sliderThumb
+                            property real segW: profileSlider.width / profileSlider.count
+                            x: profileSlider.currentIndex * segW + 3
+                            y: 3
+                            width: segW - 6
+                            height: parent.height - 6
+                            radius: 10
+                            color: Theme.accent
+                            Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                            Behavior on width { NumberAnimation { duration: 120 } }
+                        }
+
+                        Row {
+                            anchors.fill: parent
+                            Repeater {
+                                model: profileSlider.profiles
+                                delegate: Item {
+                                    required property var modelData
+                                    required property int index
+                                    width: profileSlider.width / profileSlider.count
+                                    height: profileSlider.height
+
+                                    property bool active: profileSlider.currentIndex === index
+                                    Column {
+                                        anchors.centerIn: parent
+                                        spacing: 1
+                                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.iconFor(modelData); color: active ? Theme.bg : Theme.fg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14 }
+                                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: PowerProfileService.labelFor(modelData); color: active ? Theme.bg : Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9 }
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: PowerProfileService.setProfile(modelData)
+                                    }
                                 }
-                                MouseArea { id: ppMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: PowerProfileService.setProfile(modelData) }
                             }
                         }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: !PowerProfileService.available
+                        text: PowerProfileService.statusMessage || "Недоступно"
+                        color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; wrapMode: Text.WordWrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: PowerProfileService.available && PowerProfileService.backend === "governor"
+                        text: "Переключение может запросить pkexec"
+                        color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9; wrapMode: Text.WordWrap
                     }
                 }
             }
 
+            Item { Layout.fillHeight: true }
+
+            // Power actions at bottom
             Text { text: "Действия"; color: Theme.fgMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11; font.bold: true }
 
             ColumnLayout {
@@ -133,7 +203,7 @@ PanelWindow {
                     model: root.actions
                     delegate: Rectangle {
                         required property var modelData
-                        Layout.fillWidth: true; height: 50; radius: 14
+                        Layout.fillWidth: true; height: 48; radius: 14
                         color: holdArea.containsMouse ? Qt.rgba(Theme.surface1.r, Theme.surface1.g, Theme.surface1.b, 0.95) : Theme.surface
                         border.color: modelData.dangerous ? Qt.rgba(Theme.orange.r, Theme.orange.g, Theme.orange.b, 0.35) : Theme.surface1
                         border.width: 1
@@ -195,8 +265,6 @@ PanelWindow {
                     }
                 }
             }
-
-            Item { Layout.fillHeight: true }
         }
     }
 }
