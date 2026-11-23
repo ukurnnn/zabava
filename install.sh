@@ -181,7 +181,7 @@ Dependency groups (module coverage)
   Files/actions: installs to /etc/xdg/quickshell/greeter, polkit rule, uses /var/lib/greeter
 
 Arch Linux package hints:
-  pacman: niri pipewire pipewire-pulse wireplumber libpulse networkmanager wl-clipboard cliphist cava curl git qt6-base qt6-declarative qt6-wayland qt6-svg qt6-5compat ttf-jetbrains-mono-nerd noto-fonts-emoji upower playerctl network-manager-applet/polkit greetd waypaper swww
+  pacman: niri pipewire pipewire-pulse wireplumber libpulse networkmanager wl-clipboard cliphist cava curl git qt6-base qt6-declarative qt6-wayland qt6-svg qt6-5compat ttf-jetbrains-mono-nerd noto-fonts-emoji upower playerctl network-manager-applet polkit greetd waypaper swww
   AUR (examples): quickshell or quickshell-git, matugen or matugen-bin, awww or awww-git, headsetcontrol
 EOF
 }
@@ -300,11 +300,7 @@ split_repo_aur_arch() {
 
 install_deps_arch() {
   info "Detected Arch Linux (pacman)."
-  if [[ "$DRY_RUN" -eq 0 ]]; then
-    run sudo pacman -Sy
-  else
-    info "[dry] would refresh package databases (sudo pacman -Sy)"
-  fi
+  info "Using pacman --needed (no -Sy/-Syu). If packages are not found, run: sudo pacman -Syu"
 
   local helper=""
   if [[ "$NO_AUR" -eq 0 ]]; then
