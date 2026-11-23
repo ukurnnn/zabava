@@ -7,7 +7,7 @@ PanelWindow {
     id: root
     anchors { top: true; right: true }
     color: "transparent"
-    visible: NotificationService.history.length > 0
+    visible: NotificationService.popups.length > 0
     exclusiveZone: 0
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-notifications"
@@ -15,6 +15,13 @@ PanelWindow {
 
     implicitWidth: 390
     implicitHeight: Math.min(popupColumn.implicitHeight + 16, 520)
+
+    Timer {
+        interval: 1000
+        running: NotificationService.popups.length > 0
+        repeat: true
+        onTriggered: NotificationService.expirePopups()
+    }
 
     Column {
         id: popupColumn
@@ -26,7 +33,7 @@ PanelWindow {
         width: 374
 
         Repeater {
-            model: NotificationService.history.slice(0, 5)
+            model: NotificationService.popups.slice(0, 5)
             delegate: Rectangle {
                 required property var modelData
                 property int notifId: modelData.id
@@ -36,6 +43,14 @@ PanelWindow {
                 border.color: modelData.urgency === 2 ? Theme.red : Theme.glassBorder
                 border.width: 1
                 implicitHeight: contentLayout.implicitHeight + 20
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
+                    onEntered: modelData.expiresAt = Date.now() + 60000
+                    onExited: modelData.expiresAt = Date.now() + NotificationService.timeoutFor(modelData.urgency)
+                }
 
                 ColumnLayout {
                     id: contentLayout
