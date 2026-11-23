@@ -179,12 +179,12 @@ Adjust paths/binds to your local setup.
 
 Weather implementation is code-backed in `WeatherModule.qml` / `WeatherPopup.qml`:
 
-- **Provider/request**: `curl -s --max-time 10 'https://wttr.in/<city-or-empty>?M&format=%C|%t|%f|%h|%w|%l&lang=ru'` (`M` forces metric units; `lang=ru` requests Russian condition text)
+- **Provider/request**: `curl -s --max-time 10 "https://wttr.in/<city-or-empty>?M&format=%C|%t|%f|%h|%w|%l&lang=<lang>"` (`M` forces metric units; `lang` defaults to `ru`)
 - **API key**: none used by current code.
-- **City**: optional `city` property in `WeatherModule.qml`; empty value uses wttr.in default/location behavior as returned by wttr.in.
+- **Config**: `${XDG_CONFIG_HOME:-~/.config}/quickshell/weather.json` (defaults: `weather.default.json`), fields: `city` (string, default `""`), `lang` (string, default `"ru"`).
+- **City**: optional; when empty, wttr.in determines location by IP.
 - **Refresh**: every 15 minutes (`Timer interval: 15 * 60 * 1000`) and on popup open when stale/missing.
 - **Data sent externally**: HTTPS request to `wttr.in`; when `city` is set, it is included in the URL path. No additional API key is sent by this code. Exact geolocation/IP behavior is determined by wttr.in and is not asserted here.
-- **TODO**: Confirm/document preferred default city or privacy wording if you want stricter wording than the code-level description above.
 
 ## Greeter (optional, greetd)
 
@@ -233,6 +233,7 @@ Defaults are shipped in the repository as `*.default.json`. On first run, the sh
 | `ui-style.json` | Glass/style UI settings | `ui-style.default.json` | `${XDG_CONFIG_HOME:-~/.config}/quickshell/ui-style.json` |
 | `usage.json` | Launcher frecency/usage history | `usage.default.json` | `${XDG_STATE_HOME:-~/.local/state}/quickshell/usage.json` |
 | `matugen-colors.json` | Generated Matugen palette/cache | `matugen-colors.default.json` | `${XDG_CACHE_HOME:-~/.cache}/quickshell/matugen-colors.json` |
+| `weather.json` | Weather city/language | `weather.default.json` | `${XDG_CONFIG_HOME:-~/.config}/quickshell/weather.json` |
 
 To reset a specific area, remove the corresponding runtime file and restart/reload Quickshell; defaults will be used again.
 

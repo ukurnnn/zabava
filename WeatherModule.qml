@@ -15,8 +15,18 @@ Item {
     property string wind: ""
     property string location: ""
     property string city: ""
+    property string lang: "ru"
     property bool loading: false
     property double lastUpdated: 0
+
+    readonly property string configHome: {
+        var xdg = Quickshell.env("XDG_CONFIG_HOME")
+        return (xdg && xdg !== "") ? xdg : (Quickshell.env("HOME") + "/.config")
+    }
+    readonly property string configDir: configHome + "/quickshell"
+    readonly property string weatherConfigPath: configDir + "/weather.json"
+    readonly property string repoDir: String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "")
+    readonly property string defaultWeatherConfigPath: repoDir + "/weather.default.json"
 
     function refresh() {
         if (!weatherProc.running) weatherProc.running = true
@@ -40,11 +50,61 @@ Item {
         return Qt.formatDateTime(new Date(root.lastUpdated), "HH:mm")
     }
 
+    function applyWeatherConfigText(txt, fromDefault) {
+        var text = (txt || "").trim()
+        if (text === "") return false
+        try {
+            var obj = JSON.parse(text)
+            if (!obj || typeof obj !== "object") return false
+            if (obj.city !== undefined) root.city = String(obj.city)
+            if (obj.lang !== undefined && String(obj.lang).trim() !== "") root.lang = String(obj.lang).trim()
+            if (fromDefault) weatherSaveProc.save()
+            return true
+        } catch (e) {
+            return false
+        }
+    }
+
+    FileView {
+        id: weatherConfigFile
+        path: root.weatherConfigPath
+        preload: true
+        printErrors: false
+        onLoaded: {
+            if (!root.applyWeatherConfigText(weatherConfigFile.text(), false))
+                defaultWeatherConfigFile.reload()
+        }
+        onLoadFailed: function(error) { defaultWeatherConfigFile.reload() }
+    }
+
+    FileView {
+        id: defaultWeatherConfigFile
+        path: root.defaultWeatherConfigPath
+        preload: false
+        printErrors: false
+        onLoaded: { root.applyWeatherConfigText(defaultWeatherConfigFile.text(), true) }
+    }
+
+    Process {
+        id: weatherSaveProc
+        command: ["true"]
+        running: false
+        function save() {
+            try {
+                var obj = { city: root.city || "", lang: root.lang || "ru" }
+                var dir = root.configDir
+                var path = root.weatherConfigPath
+                weatherSaveProc.command = ["bash", "-c", "mkdir -p \"$1\" && printf '%s' \"$2\" > \"$3\"", "sh", dir, JSON.stringify(obj), path]
+                weatherSaveProc.running = true
+            } catch (e) {}
+        }
+    }
+
     Process {
         id: weatherProc
-        command: ["bash", "-c",
-            "curl -s --max-time 10 'https://wttr.in/" +
-            (root.city !== "" ? encodeURIComponent(root.city) : "") + "?M&format=%C|%t|%f|%h|%w|%l&lang=ru' 2>/dev/null"
+        command: [
+            "curl", "-s", "--max-time", "10",
+            "https://wttr.in/" + encodeURIComponent(root.city || "") + "?M&format=%C|%t|%f|%h|%w|%l&lang=" + encodeURIComponent(root.lang || "ru")
         ]
         running: true
 
