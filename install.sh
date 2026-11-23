@@ -115,7 +115,6 @@ DEPS_CLIPBOARD=(
 DEPS_THEMING=(
   "matugen|matugen-bin"
   waypaper
-  "awww|awww-git|swww"
 )
 # Lock screen / auth helpers
 DEPS_LOCK=(
@@ -162,7 +161,6 @@ Dependency groups (module coverage)
 [Theming & wallpaper]
   - matugen (color generation)
   - waypaper (config source for wallpaper-derived theme, optional but used by "Из обоев")
-  - awww/swww (queried by standalone LockScreen.qml wallpaper integration; optional)
   Modules: Theme/matugen colors, Control Center color presets (matugen, wallpaper, custom)
 
 [Fonts / icons]
@@ -181,8 +179,8 @@ Dependency groups (module coverage)
   Files/actions: installs to /etc/xdg/quickshell/greeter, polkit rule, uses /var/lib/greeter
 
 Arch Linux package hints:
-  pacman: niri pipewire pipewire-pulse wireplumber libpulse networkmanager wl-clipboard cliphist cava curl git qt6-base qt6-declarative qt6-wayland qt6-svg qt6-5compat ttf-jetbrains-mono-nerd noto-fonts-emoji upower playerctl network-manager-applet polkit greetd waypaper swww
-  AUR (examples): quickshell or quickshell-git, matugen or matugen-bin, awww or awww-git, headsetcontrol
+  pacman: niri pipewire pipewire-pulse wireplumber libpulse networkmanager wl-clipboard cliphist cava curl git qt6-base qt6-declarative qt6-wayland qt6-svg qt6-5compat ttf-jetbrains-mono-nerd noto-fonts-emoji upower playerctl network-manager-applet polkit greetd waypaper
+  AUR (examples): quickshell or quickshell-git, matugen or matugen-bin, headsetcontrol
 EOF
 }
 
@@ -367,7 +365,7 @@ install_deps_generic() {
   echo
   print_deps
   echo
-  warn "Common requirements: quickshell, niri, Qt6 (QML/Wayland), pipewire+wireplumber, networkmanager(nmcli), wl-clipboard, cliphist, matugen, cava, curl, upower, awww/swww, waypaper, JetBrainsMono Nerd Font, greetd (optional)."
+  warn "Common requirements: quickshell, niri, Qt6 (QML/Wayland), pipewire+wireplumber, networkmanager(nmcli), wl-clipboard, cliphist, matugen, cava, curl, upower, waypaper, JetBrainsMono Nerd Font, greetd (optional)."
 }
 
 install_deps() {
