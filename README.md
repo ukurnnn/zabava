@@ -109,16 +109,82 @@ Common usage:
 ## Usage
 
 - Run the shell with `qs -p /path/to/quickshell/shell.qml`.
-- **Control Center IPC toggle** (used by Niri keybind in this setup):
-  ```bash
-  qs -p "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell" ipc call controlcenter toggle
-  ```
-  Example Niri bind:
-  ```kdl
-  Mod+A { spawn "qs" "-p" "~/.config/quickshell" "ipc" "call" "controlcenter" "toggle"; }
-  ```
 - Theming presets are managed from the Control Center (Matugen presets, wallpaper-derived theme, custom palettes). Matugen/wallpaper themes update `${XDG_CACHE_HOME:-~/.cache}/quickshell/matugen-colors.json`.
 - Bar style/presets and color preset state are persisted in XDG config/state files (see Configuration files below).
+
+## Configuration
+
+### `bar-config.json`
+
+Stored at `${XDG_CONFIG_HOME:-~/.config}/quickshell/bar-config.json` (defaults: `bar-config.default.json`).
+
+| Field | Type | Description |
+|---|---|---|
+| `configVersion` | number | Config schema version (current: `2`). |
+| `style` | string | Bar style: `islands`, `monolithic`, or `full`. |
+| `activePreset` | string | Active preset id (`my_islands`, `monolithic`, `full`, or user preset). |
+| `userPresets` | object | User-saved presets. |
+| `moduleOrder` | object | Module ids per section: `left`, `center`, `right`. |
+| `hiddenModules` | array | Module ids hidden from the bar. |
+
+Known module ids from `BarConfig.qml`: `workspaces`, `mpris`, `clock`, `volume`, `sysmon`, `layout`, `network`, `tray`, `power`.
+
+### Color presets
+
+Color preset selection is stored in `${XDG_CONFIG_HOME:-~/.config}/quickshell/color-presets.json` (defaults: `color-presets.default.json`):
+
+- `active`: preset id selected in Control Center.
+- `wallpaperMode`: `dark` or `light` for wallpaper-derived Matugen mode.
+
+Built-in presets are defined in `ControlCenter.qml` (Matugen seed presets, custom palettes like Stone Trio, and wallpaper-derived preset).
+
+### Adding a module
+
+1. Create a module component (usually `*Module.qml`) and expose a compact bar API (`implicitWidth/implicitHeight`, popup hooks/properties as needed).
+2. Register it in `shell.qml` as a bar island/item with a `moduleId` and layout anchoring compatible with `BarConfig.visibleOrder(...)`.
+3. Add module metadata/id to `BarConfig.qml` (`defaultModuleOrder`, `moduleMeta`, and any layout expectations).
+4. If it needs Control Center controls, add a page/section in `ControlCenter.qml` and wire service/singleton state.
+5. Run `qmllint` for touched QML files and verify in a running `qs` session.
+
+## IPC
+
+Quickshell IPC targets exposed by `IpcHandler`:
+
+| Target | Function | Example |
+|---|---|---|
+| `controlcenter` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call controlcenter toggle` |
+| `launcher` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call launcher toggle` |
+| `clipboard` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call clipboard toggle` |
+| `powermenu` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call powermenu toggle` |
+| `networkpopup` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call networkpopup toggle` |
+| `audiopopup` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call audiopopup toggle` |
+| `playerpopup` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call playerpopup toggle` |
+| `calendar` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call calendar toggle` |
+| `weather` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call weather toggle` |
+| `thememenu` | `toggle()` | `qs -p "$XDG_CONFIG_HOME/quickshell" ipc call thememenu toggle` |
+
+### Niri keybinds (example)
+
+```kdl
+binds {
+    Mod+A { spawn "qs" "-p" "~/.config/quickshell" "ipc" "call" "controlcenter" "toggle"; }
+    Mod+Space { spawn "qs" "-p" "~/.config/quickshell" "ipc" "call" "launcher" "toggle"; }
+    Mod+V { spawn "qs" "-p" "~/.config/quickshell" "ipc" "call" "clipboard" "toggle"; }
+}
+```
+
+Adjust paths/binds to your local setup.
+
+## Weather
+
+Weather implementation is code-backed in `WeatherModule.qml` / `WeatherPopup.qml`:
+
+- **Provider/request**: `curl -s --max-time 10 'https://wttr.in/<city-or-empty>?format=%C|%t|%f|%h|%w|%l'`
+- **API key**: none used by current code.
+- **City**: optional `city` property in `WeatherModule.qml`; empty value uses wttr.in default/location behavior as returned by wttr.in.
+- **Refresh**: every 15 minutes (`Timer interval: 15 * 60 * 1000`) and on popup open when stale/missing.
+- **Data sent externally**: HTTPS request to `wttr.in`; when `city` is set, it is included in the URL path. No additional API key is sent by this code. Exact geolocation/IP behavior is determined by wttr.in and is not asserted here.
+- **TODO**: Confirm/document preferred default city or privacy wording if you want stricter wording than the code-level description above.
 
 ## Greeter (optional, greetd)
 
@@ -169,6 +235,54 @@ Defaults are shipped in the repository as `*.default.json`. On first run, the sh
 | `matugen-colors.json` | Generated Matugen palette/cache | `matugen-colors.default.json` | `${XDG_CACHE_HOME:-~/.cache}/quickshell/matugen-colors.json` |
 
 To reset a specific area, remove the corresponding runtime file and restart/reload Quickshell; defaults will be used again.
+
+## Troubleshooting
+
+- **Missing icons/glyphs/squares**: install a Nerd Font (JetBrainsMono Nerd Font recommended) and an emoji font; restart Quickshell after font changes.
+- **No audio controls/devices**: verify PipeWire/WirePlumber user services are running. This config uses `wpctl` for source mute toggles and `pactl` for sink/source enumeration and default device detection in audio UI.
+- **No network info**: verify `NetworkManager` is running and `nmcli` is available.
+- **Clipboard history empty**: start a watcher such as `wl-paste --watch cliphist store`.
+- **Wallpaper theme not applied**: check `waypaper` config (`~/.config/waypaper/config.ini`) and `matugen` availability.
+- **Lock screen wallpaper missing**: `LockScreen.qml` queries `awww query`; install/configure `awww` or `swww` as appropriate for your wallpaper daemon setup.
+
+## Uninstall
+
+```bash
+# Remove symlinked/copied config target
+rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/quickshell"
+
+# Optional: remove runtime state/cache
+rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/quickshell"
+rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/quickshell"
+
+# If greeter was installed:
+cd /path/to/repo/greeter && ./deploy.sh --uninstall
+```
+
+If you used `--copy`, remove the copied target; if you used `--link`, removing the symlink does not delete the source repo.
+
+## Verified versions
+
+- Quickshell: TODO (not determinable from repository code; please provide tested version).
+- Niri: TODO (not determinable from repository code; please provide tested version).
+
+## Credits
+
+- [Quickshell](https://quickshell.outfoxxed.me/) for the shell framework.
+- [Niri](https://github.com/YaLTeR/niri) for compositor integration/workflow assumptions.
+- [Matugen](https://github.com/InioX/matugen) for palette generation.
+- Catppuccin/Mocha-inspired defaults and other preset names referenced in code/UI.
+
+## Screenshots
+
+<!-- TODO: Capture screenshot: full desktop bar in islands style -->
+![Bar - islands style](docs/screenshots/bar-islands.png)
+
+<!-- TODO: Capture screenshot: Control Center open on Sound/Colors page -->
+![Control Center](docs/screenshots/control-center.png)
+
+<!-- TODO: Capture screenshot: App launcher with search/result badges -->
+![Launcher](docs/screenshots/launcher.png)
 
 ## Notes
 
