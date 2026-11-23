@@ -131,4 +131,4 @@ This installs files to `/etc/xdg/quickshell/greeter`, adds a polkit rule, and pr
 
 ## License
 
-No license file is included in this repository yet. Add one if you plan to distribute this publicly.
+This repository is licensed under the [MIT License](./LICENSE).
